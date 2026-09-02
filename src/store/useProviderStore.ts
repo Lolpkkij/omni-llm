@@ -1,66 +1,116 @@
 import { create } from "zustand";
-import { Provider } from "@/lib/providerConfig";
-import localforage from "localforage";
-import CryptoJS from "crypto-js";
+import type { Provider } from "@/lib/providerConfig";
+import { loadProviders, saveProviders } from "@/lib/providerPersistence";
 
 interface ProviderState {
   providers: Provider[];
-  loading: boolean;
-  setProviders: (providers: Provider[]) => void;
-  addProvider: (provider: Omit<Provider, "id">) => Promise<void>;
-  updateProvider: (id: string, updates: Partial<Provider>) => Promise<void>;
-  deleteProvider: (id: string) => Promise<void>;
+  /** Load providers from storage (called on app start) */
+  load: () => Promise<void>;
+
+  /** Legacy alias – UI may still call this */
   loadProviders: () => Promise<void>;
+
+  /** Add a brand‑new provider (no keys yet) */
+  addProvider: (partial: Omit<Provider, "id">) => Promise<void>;
+
+  /** Update *any* fields of an existing provider */
+  updateProvider: (id: string, updates: Partial<Provider>) => Promise<void>;
+
+  /** Remove a provider entirely */
+  removeProvider: (id: string) => Promise<void>;
+
+  /** Legacy alias used in some components */
+  deleteProvider: (id: string) => Promise<void>;
+
+  /** API‑key management */
+  addApiKey: (providerId: string, encryptedKey: string) => Promise<void>;
+  removeApiKey: (providerId: string, index: number) => Promise<void>;
 }
 
-const STORAGE_KEY = "omni_providers_config";
-// Use import.meta.env instead of process.env for Vite
+/** Salt used for encrypting keys – must be the same across the app */
 const SALT = import.meta.env.VITE_ENCRYPTION_SALT || "default-salt";
 
 export const useProviderStore = create<ProviderState>((set, get) => ({
   providers: [],
-  loading: false,
 
+  /** --------------------------------------------------------------------
+   *  LOAD
+   * ------------------------------------------------------------------- */
+  load: async () => {
+    const persisted = await loadProviders();
+    set({ providers: persisted });
+  },
+
+  // Legacy name kept for backward compatibility
   loadProviders: async () => {
-    set({ loading: true });
-    try {
-      const stored = await localforage.getItem<Provider[]>(STORAGE_KEY);
-      if (stored) set({ providers: stored });
-    } catch (e) {
-      console.error("Failed to load providers", e);
-    } finally {
-      set({ loading: false });
-    }
+    await get().load();
   },
 
-  setProviders: (providers) => {
-    set({ providers });
-    localforage.setItem(STORAGE_KEY, providers);
-  },
-
-  addProvider: async (providerData) => {
+  /** --------------------------------------------------------------------
+   *  CREATE
+   * ------------------------------------------------------------------- */
+  addProvider: async (partial) => {
     const id = crypto.randomUUID();
-    const newProvider: Provider = { 
-      ...providerData, 
-      id, 
-      encryptedKeys: [], 
-      enabled: true 
-    } as Provider;
-    
+    const newProvider: Provider = {
+      ...partial,
+      id,
+      encryptedKeys: [],
+      enabled: true,
+    };
     const updated = [...get().providers, newProvider];
+    await saveProviders(updated);
     set({ providers: updated });
-    await localforage.setItem(STORAGE_KEY, updated);
   },
 
+  /** --------------------------------------------------------------------
+   *  UPDATE (generic field patch)
+   * ------------------------------------------------------------------- */
   updateProvider: async (id, updates) => {
-    const updated = get().providers.map((p) => (p.id === id ? { ...p, ...updates } : p));
+    const updated = get().providers.map((p) =>
+      p.id === id ? { ...p, ...updates } : p,
+    );
+    await saveProviders(updated);
     set({ providers: updated });
-    await localforage.setItem(STORAGE_KEY, updated);
   },
 
-  deleteProvider: async (id) => {
+  /** --------------------------------------------------------------------
+   *  DELETE
+   * ------------------------------------------------------------------- */
+  removeProvider: async (id) => {
     const updated = get().providers.filter((p) => p.id !== id);
+    await saveProviders(updated);
     set({ providers: updated });
-    await localforage.setItem(STORAGE_KEY, updated);
+  },
+
+  // Alias used by older components (`deleteProvider` → `removeProvider`)
+  deleteProvider: async (id) => {
+    await get().removeProvider(id);
+  },
+
+  /** --------------------------------------------------------------------
+   *  API‑KEY MANAGEMENT
+   * ------------------------------------------------------------------- */
+  addApiKey: async (providerId, encryptedKey) => {
+    const updated = get().providers.map((p) => {
+      if (p.id === providerId) {
+        return { ...p, encryptedKeys: [...p.encryptedKeys, encryptedKey] };
+      }
+      return p;
+    });
+    await saveProviders(updated);
+    set({ providers: updated });
+  },
+
+  removeApiKey: async (providerId, idx) => {
+    const updated = get().providers.map((p) => {
+      if (p.id === providerId) {
+        const copy = [...p.encryptedKeys];
+        copy.splice(idx, 1);
+        return { ...p, encryptedKeys: copy };
+      }
+      return p;
+    });
+    await saveProviders(updated);
+    set({ providers: updated });
   },
 }));
