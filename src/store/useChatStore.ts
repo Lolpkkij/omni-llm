@@ -10,6 +10,10 @@ type ChatState = {
   messages: Message[];
   setSelectedModel: (model: string) => void;
   addUserMessage: (content: string) => void;
+  /**
+   * If `replaceLast` is true the newest assistant message is replaced –
+   * used for streaming simulation.
+   */
   addAssistantMessage: (content: string, replaceLast?: boolean) => void;
   clearChat: () => void;
 };
@@ -17,11 +21,15 @@ type ChatState = {
 export const useChatStore = create<ChatState>((set) => ({
   selectedModel: "OpenAI",
   messages: [],
+
   setSelectedModel: (model) => set({ selectedModel: model }),
 
   addUserMessage: (content) =>
     set((state) => ({
-      messages: [...state.messages, { role: "user", content }],
+      messages: [
+        ...state.messages,
+        { role: "user" as const, content } // cast role to literal type
+      ]
     })),
 
   addAssistantMessage: (content, replaceLast = false) =>
@@ -29,16 +37,19 @@ export const useChatStore = create<ChatState>((set) => ({
       if (replaceLast && state.messages.length) {
         const last = state.messages[state.messages.length - 1];
         if (last.role === "assistant") {
-          const updated = [
+          const updated: Message[] = [
             ...state.messages.slice(0, -1),
-            { role: "assistant", content },
+            { role: "assistant" as const, content }
           ];
           return { messages: updated };
         }
       }
-      return {
-        messages: [...state.messages, { role: "assistant", content }],
-      };
+
+      const newMessages: Message[] = [
+        ...state.messages,
+        { role: "assistant" as const, content }
+      ];
+      return { messages: newMessages };
     }),
 
   clearChat: () => set({ messages: [] })
