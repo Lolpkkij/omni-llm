@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User } from 'lucide-react';
+import { Send, Bot, Trash2 } from 'lucide-react';
 import { useChatStore } from '@/store/useChatStore';
 import MessageBubble from '@/components/MessageBubble';
+import { Button } from '@/components/ui/button';
 
 const Chat = () => {
-  const { selectedModel, messages, setSelectedModel, addUserMessage, addAssistantMessage } = useChatStore();
+  const { selectedModel, messages, setSelectedModel, addUserMessage, addAssistantMessage, clearChat } = useChatStore();
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -47,15 +48,26 @@ const Chat = () => {
           </div>
           <span className="font-semibold text-white">AI Assistant</span>
         </div>
-        <select 
-          value={selectedModel}
-          onChange={(e) => setSelectedModel(e.target.value)}
-          className="bg-gray-900 text-gray-300 text-sm rounded-lg border border-gray-700 px-3 py-2 outline-none focus:ring-2 ring-[#6366F1]/50"
-        >
-          {["OpenAI", "Anthropic", "Gemini", "Groq", "Mistral", "OpenRouter"].map(m => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={clearChat}
+            className="text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-full"
+            title="Clear conversation"
+          >
+            <Trash2 size={18} />
+          </Button>
+          <select 
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="bg-gray-900 text-gray-300 text-sm rounded-lg border border-gray-700 px-3 py-2 outline-none focus:ring-2 ring-[#6366F1]/50"
+          >
+            {["OpenAI", "Anthropic", "Gemini", "Groq", "Mistral", "OpenRouter"].map(m => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Messages */}
