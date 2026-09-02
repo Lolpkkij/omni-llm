@@ -1,65 +1,209 @@
-import React, { useEffect } from 'react';
+"use client";
+
+import React, { useState } from 'react';
+import { 
+  Copy, 
+  RefreshCw, 
+  TrendingUp, 
+  CreditCard, 
+  Database, 
+  ChevronDown, 
+  ChevronUp,
+  ArrowUp
+} from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { useChatStore } from '@/store/useChatStore';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { useProviderStore } from '@/store/useProviderStore';
+import { useUnifiedKeyStore } from '@/store/useUnifiedKeyStore';
 
 const Dashboard = () => {
-  const {
-    selectedProvider,
-    apiKeys,
-    usageData,
-    setUsageData,
-    selectedModel,
-    setSelectedModel,
-    setSelectedProvider,
-  } = useChatStore();
+  const { providers, setUsageData } = useProviderStore();
+  const { unifiedKey } = useUnifiedKeyStore();
+  const [refreshing, setRefreshing] = useState(false);
+  const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchUsage = async () => {
-      const encryptedKey = apiKeys[selectedProvider];
-      if (!encryptedKey) {
-        toast.error('API key for the selected provider is missing');
-        return;
-      }
-      try {
-        const res = await fetch('/api/usage', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          // Send as query params to keep simple
-          // e.g., /api/usage?provider=openai&encryptedKey=...
-        });
-        // Actually use query params
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    fetchUsage();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProvider, apiKeys]);
+  const copyKey = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Unified key copied!");
+  };
 
-  // Simple placeholder rendering – show usage if present
-  const data = usageData[selectedProvider];
+  const refreshUsage = async () => {
+    setRefreshing(true);
+    try {
+      const results = await Promise.all(providers.map(async (p) => {
+        if (!p.encryptedKeys?.length) return { id: p.id, usage: null };
+        
+        try {
+          const res = await fetch('/api/usage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              providerId: p.id, 
+              encryptedKey: p.encryptedKeys[0] 
+            }),
+          });
+          if (!res.ok) throw new Error();
+          const usage = await res.json();
+          return { id: p.id, usage };
+        } catch (e) {
+          return { id: p.id, usage: null };
+        }
+      }));
+
+      results.forEach(res => {
+        if (res.usage) setUsageData(res.id, res.usage);
+      });
+
+      toast.success("Usage data updated across all providers");
+    } catch (e) {
+      toast.error("Failed to refresh some usage data");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const totalTokens = providers.reduce((sum, p) => sum + (p.usage?.tokensThisMonth || 0), 0);
+  const totalSpent = providers.reduce((sum, p) => sum + (p.usage?.spentUSD || 0), 0);
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold text-white mb-6">Provider Usage</h1>
-      {data ? (
-        <Card className="bg-gray-800/40 border-gray-700 text-white">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xl text-[#6366F1]">{selectedProvider.toUpperCase()} Usage</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p>Tokens used this month: <span className="font-mono">{data.tokens}</span></p>
-            <p>Estimated cost (USD): <span className="font-mono">${data.costUSD.toFixed(2)}</span></p>
+    <div className="max-w-5xl mx-auto p-6 animate-fadeIn space-y-8">
+      {/* Top Totals */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="bg-gradient-to-br from-[#6366F1]/20 to-transparent border-gray-700 text-white">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm font-medium">Total Tokens Used</p>
+                <h2 className="text-4xl font-bold mt-1 font-mono">{totalTokens.toLocaleString()}</h2>
+              </div>
+              <div className="p-3 bg-[#6366F1]/20 rounded-2xl text-[#6366F1]">
+                <TrendingUp size={32} />
+              </div>
+            </div>
           </CardContent>
         </Card>
-      ) : (
-        <p className="text-gray-400">Usage tracking not available for this provider.</p>
-      )}
+        <Card className="bg-gradient-to-br from-green-500/10 to-transparent border-gray-700 text-white">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm font-medium">Total Spend (USD)</p>
+                <h2 className="text-4xl font-bold mt-1 font-mono">${totalSpent.toFixed(2)}</h2>
+              </div>
+              <div className="p-3 bg-green-500/20 rounded-2xl text-green-500">
+                <CreditCard size={32} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Unified Key & Actions */}
+      <div className="flex flex-col md:flex-row gap-6">
+        <Card className="flex-1 bg-gray-800/40 border-gray-700 text-white">
+          <CardHeader>
+            <CardTitle className="text-sm text-gray-400 flex items-center gap-2">
+              <Database size={16} /> Unified API Key
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Input 
+                readOnly 
+                value={unifiedKey} 
+                className="bg-gray-900 border-gray-700 font-mono text-sm"
+              />
+              <Button size="icon" onClick={() => copyKey(unifiedKey)} className="bg-[#6366F1] hover:bg-[#4f46e5]">
+                <Copy size={18} />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        <div className="flex items-end">
+          <Button 
+            onClick={refreshUsage} 
+            disabled={refreshing}
+            className="h-14 px-6 bg-white text-gray-900 hover:bg-gray-200 font-bold rounded-xl transition-all"
+          >
+            {refreshing ? <Loader2 className="animate-spin mr-2" size={20} /> : <RefreshCw className="mr-2" size={20} />}
+            Refresh Usage
+          </Button>
+        </div>
+      </div>
+
+      {/* Provider Usage List */}
+      <div className="space-y-4">
+        <h3 className="text-xl font-bold text-white mb-4">Provider Breakdown</h3>
+        {providers.length === 0 && (
+          <div className="text-center py-12 text-gray-500 border-2 border-dashed border-gray-800 rounded-3xl">
+            No providers configured. Add some in the Providers tab!
+          </div>
+        )}
+        <div className="grid grid-cols-1 gap-4">
+          {providers.map(p => (
+            <Card key={p.id} className="bg-gray-800/40 border-gray-700 text-white overflow-hidden">
+              <div 
+                className="p-4 cursor-pointer flex items-center justify-between hover:bg-gray-700/30 transition-colors"
+                onClick={() => setExpandedProvider(expandedProvider === p.id ? null : p.id)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={cn("w-2 h-2 rounded-full", p.enabled ? "bg-green-500" : "bg-red-500")} />
+                  <div>
+                    <p className="font-bold">{p.name}</p>
+                    <p className="text-xs text-gray-500">{p.encryptedKeys.length} keys configured</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-6">
+                  <div className="text-right hidden md:block">
+                    <p className="text-xs text-gray-500 uppercase">Monthly Spend</p>
+                    <p className="font-mono font-bold">${p.usage?.spentUSD?.toFixed(2) || "0.00"}</p>
+                  </div>
+                  <div className="text-right hidden md:block">
+                    <p className="text-xs text-gray-500 uppercase">Tokens</p>
+                    <p className="font-mono font-bold">{p.usage?.tokensThisMonth?.toLocaleString() || "0"}</p>
+                  </div>
+                  {expandedProvider === p.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                </div>
+              </div>
+
+              {expandedProvider === p.id && (
+                <CardContent className="p-4 bg-gray-900/30 border-t border-gray-700 animate-in slide-in-from-top-2">
+                  {p.usage ? (
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Model Consumption</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {p.usage.models.map((m, i) => (
+                          <div key={i} className="flex justify-between items-center p-3 bg-gray-800 rounded-xl border border-gray-700">
+                            <span className="text-sm font-medium">{m.name}</span>
+                            <span className="font-mono text-sm text-gray-400">{m.tokens.toLocaleString()} tokens</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-4 text-center text-sm text-gray-500 italic">
+                      Usage tracking not available for this provider.
+                    </div>
+                  )}
+                </CardContent>
+              )}
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      <button 
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className="fixed bottom-8 right-8 p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition-all z-10"
+      >
+        <ArrowUp size={24} />
+      </button>
     </div>
   );
 };
+
+// Helper to avoid repeated tailwind logic
+const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');
 
 export default Dashboard;

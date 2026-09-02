@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+export const ProviderUsageSchema = z.object({
+  tokensThisMonth: z.number(),
+  spentUSD: z.number(),
+  models: z.array(z.object({
+    name: z.string(),
+    tokens: z.number(),
+  })),
+});
+
+export type ProviderUsage = z.infer<typeof ProviderUsageSchema>;
+
 export const ProviderSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1),
@@ -7,11 +18,12 @@ export const ProviderSchema = z.object({
   auth: z.object({
     type: z.enum(["header", "query", "body"]),
     keyName: z.string().min(1),
-    prefix: z.string().optional(),   // e.g. "Bearer "
+    prefix: z.string().optional(),
   }),
-  encryptedKeys: z.array(z.string()), // each key is stored encrypted
-  providerType: z.enum(["openai","anthropic","gemini","custom"]).optional(),
-  detectedModel: z.string().optional(), // Added to fix TS2353 and TS2339
+  encryptedKeys: z.array(z.string()),
+  providerType: z.enum(["openai", "anthropic", "gemini", "custom"]).optional(),
+  usage: ProviderUsageSchema.optional(),
+  detectedModel: z.string().optional(),
   enabled: z.boolean().default(true),
   order: z.number().int().optional(),
 });

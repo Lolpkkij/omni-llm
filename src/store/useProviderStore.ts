@@ -1,56 +1,36 @@
 import { create } from "zustand";
-import type { Provider } from "@/lib/providerConfig";
+import type { Provider, ProviderUsage } from "@/lib/providerConfig";
 import { loadProviders, saveProviders } from "@/lib/providerPersistence";
 
-// Re‑export Provider so other files can do `import { type Provider } from '@/store/useProviderStore'`
 export type { Provider };
 
 interface ProviderState {
   providers: Provider[];
-  /** Load providers from IndexedDB */
   load: () => Promise<void>;
-  /** Legacy alias used by some components */
   loadProviders: () => Promise<void>;
-
-  /** Add a brand‑new provider (no keys yet) */
   addProvider: (partial: Omit<Provider, "id">) => Promise<void>;
-
-  /** Update any fields of an existing provider */
   updateProvider: (id: string, updates: Partial<Provider>) => Promise<void>;
-
-  /** Remove a provider */
   removeProvider: (id: string) => Promise<void>;
-
-  /** Legacy alias – UI may still call this */
   deleteProvider: (id: string) => Promise<void>;
-
-  /** API‑key management */
   addApiKey: (providerId: string, encryptedKey: string) => Promise<void>;
   removeApiKey: (providerId: string, index: number) => Promise<void>;
+  setUsageData: (providerId: string, usage: ProviderUsage) => void;
 }
 
-/** Salt for encrypting keys – must match the one used elsewhere */
 const SALT = import.meta.env.VITE_ENCRYPTION_SALT || "default-salt";
 
 export const useProviderStore = create<ProviderState>((set, get) => ({
   providers: [],
 
-  // -----------------------------------------------------------------
-  // LOAD
-  // -----------------------------------------------------------------
   load: async () => {
     const persisted = await loadProviders();
     set({ providers: persisted });
   },
 
-  // Keep the old name for backward compatibility
   loadProviders: async () => {
     await get().load();
   },
 
-  // -----------------------------------------------------------------
-  // CREATE
-  // -----------------------------------------------------------------
   addProvider: async (partial) => {
     const id = crypto.randomUUID();
     const newProvider: Provider = {
@@ -64,9 +44,6 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
     set({ providers: updated });
   },
 
-  // -----------------------------------------------------------------
-  // UPDATE (generic field patch)
-  // -----------------------------------------------------------------
   updateProvider: async (id, updates) => {
     const updated = get().providers.map((p) =>
       p.id === id ? { ...p, ...updates } : p,
@@ -75,23 +52,16 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
     set({ providers: updated });
   },
 
-  // -----------------------------------------------------------------
-  // DELETE
-  // -----------------------------------------------------------------
   removeProvider: async (id) => {
     const updated = get().providers.filter((p) => p.id !== id);
     await saveProviders(updated);
     set({ providers: updated });
   },
 
-  // Alias kept for components that still call `deleteProvider`
   deleteProvider: async (id) => {
     await get().removeProvider(id);
   },
 
-  // -----------------------------------------------------------------
-  // API‑KEY MANAGEMENT
-  // -----------------------------------------------------------------
   addApiKey: async (providerId, encryptedKey) => {
     const updated = get().providers.map((p) => {
       if (p.id === providerId) {
@@ -113,6 +83,13 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
       return p;
     });
     await saveProviders(updated);
+    set({ providers: updated });
+  },
+
+  setUsageData: (providerId, usage) => {
+    const updated = get().providers.map((p) => 
+      p.id === providerId ? { ...p, usage } : p
+    );
     set({ providers: updated });
   },
 }));
