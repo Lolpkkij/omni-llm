@@ -11,7 +11,7 @@ import {
   SelectLabel,
   SelectSeparator 
 } from "@/components/ui/select";
-import { Sparkles, Lock, Zap, CheckCircle2 } from "lucide-react";
+import { Sparkles, Lock, Zap, CheckCircle2, Copy } from "lucide-react";
 import { useSubscriptionStore } from "@/store/useSubscriptionStore";
 import { MODEL_CATALOG } from "@/lib/modelRouter";
 import { cn } from "@/lib/utils";
@@ -100,8 +100,13 @@ export default function ModelSelector({ value, onChange, providers, disabled }: 
           </>
         )}
 
+        {/* No providers placeholder */}
         {availableModels.length === 0 && !hasAnyProvider && (
-          <SelectItem disabled className="text-center text-gray-500 py-4">
+          <SelectItem
+            value="none"
+            disabled
+            className="text-center text-gray-500 py-4"
+          >
             No providers configured. Add API keys in Providers tab.
           </SelectItem>
         )}

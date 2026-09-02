@@ -28,6 +28,8 @@ export const ProviderSchema = z.object({
   detectedModel: z.string().optional(),
   enabled: z.boolean().default(true),
   order: z.number().int().optional(),
+  /** Optional custom path for model‑list endpoint (e.g. "/v1/models") */
+  modelPath: z.string().optional(),
 });
 
 export type Provider = z.infer<typeof ProviderSchema>;
