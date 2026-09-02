@@ -9,6 +9,7 @@ import Chat from "./pages/Chat";
 import ApiKeys from "./pages/ApiKeys";
 import LocalHub from "./pages/LocalHub";
 import Dashboard from "./pages/Dashboard";
+import Providers from "./pages/Providers";
 import Sidebar from "./components/Sidebar";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="/chat" element={<Chat />} />
               <Route path="/api-keys" element={<ApiKeys />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/providers" element={<Providers />} />
               <Route path="/local-hub" element={<LocalHub />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
