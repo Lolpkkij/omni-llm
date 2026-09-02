@@ -5,6 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import Chat from "./pages/Chat";
+import ApiKeys from "./pages/ApiKeys";
+import LocalHub from "./pages/LocalHub";
+import Sidebar from "./components/Sidebar";
 
 const queryClient = new QueryClient();
 
@@ -14,11 +18,18 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <div className="flex min-h-screen bg-[#0a0b2e] text-gray-100">
+          <Sidebar />
+          <div className="flex-1 flex flex-col h-screen overflow-hidden">
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/api-keys" element={<ApiKeys />} />
+              <Route path="/local-hub" element={<LocalHub />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </div>
+        </div>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
