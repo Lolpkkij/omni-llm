@@ -9,7 +9,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
@@ -71,7 +77,7 @@ export default function ProviderForm({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+          <div className="space-y-2">
             <Label>Name</Label>
             <Input
               placeholder="Display name"
@@ -81,7 +87,7 @@ export default function ProviderForm({
             />
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label>Base URL</Label>
             <Input
               placeholder="https://api.openai.com/v1"
@@ -91,7 +97,7 @@ export default function ProviderForm({
             />
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label>Model Path</Label>
             <Input
               placeholder="/chat/completions"
@@ -100,21 +106,21 @@ export default function ProviderForm({
             />
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label>Auth Type</Label>
             <Select value={authType} onValueChange={(v) => setAuthType(v as any)}>
-              <Select.Trigger className="w-full">
-                <Select.Value placeholder="Select auth type" />
-              </Select.Trigger>
-              <Select.Content>
-                <Select.Item value="header">Header</Select.Item>
-                <Select.Item value="query">Query</Select.Item>
-                <Select.Item value="body">Body</Select.Item>
-              </Select.Content>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select auth type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="header">Header</SelectItem>
+                <SelectItem value="query">Query</SelectItem>
+                <SelectItem value="body">Body</SelectItem>
+              </SelectContent>
             </Select>
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label>Key Name</Label>
             <Input
               placeholder="Authorization or api_key"
@@ -124,7 +130,7 @@ export default function ProviderForm({
             />
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label>Prefix (optional)</Label>
             <Input
               placeholder="Bearer "
@@ -133,7 +139,7 @@ export default function ProviderForm({
             />
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label>Body Template (optional)</Label>
             <textarea
               className="w-full p-2 rounded bg-gray-900 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
@@ -158,7 +164,7 @@ export default function ProviderForm({
             <Label htmlFor="enabled">Enabled</Label>
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label>Order (optional)</Label>
             <Input
               type="number"
@@ -167,7 +173,7 @@ export default function ProviderForm({
             />
           </div>
 
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading} className="w-full">
             {loading ? "Saving…" : submitLabel}
           </Button>
         </form>
