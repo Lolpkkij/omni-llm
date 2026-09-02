@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import localforage from 'localforage';
-import CryptoJS from 'crypto-js';
+// Removed client‑side storage and encryption; keys are handled securely on the server
+
 import { useChatStore } from '@/store/useChatStore';
 import { useProviderStore, type Provider } from '@/store/useProviderStore';
 
