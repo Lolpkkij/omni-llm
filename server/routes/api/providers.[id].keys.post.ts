@@ -2,6 +2,7 @@ import { defineHandler } from "nitro";
 import { readBody, getRouterParam, createError } from "nitro/h3";
 import CryptoJS from "crypto-js";
 import { getAllProviders, updateProvider } from "../../utils/providerStore";
+import { useRuntimeConfig } from "nitro";
 
 export default defineHandler(async (event) => {
   const { id: providerId } = getRouterParam(event);

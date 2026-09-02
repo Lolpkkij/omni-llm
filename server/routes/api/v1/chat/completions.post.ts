@@ -1,11 +1,9 @@
 import { defineHandler } from "nitro";
 import { readBody, createError } from "nitro/h3";
 import CryptoJS from "crypto-js";
-import { getAllProviders, isSafeUrl } from "../../utils/providerStore"; // Assuming isSafeUrl moved to store or lib
-
-// Note: In a real Nitro app, you'd import isSafeUrl from @/lib/providerConfig
-// But for this edit, I'll define a local helper or import correctly.
-import { isSafeUrl as validateUrl } from "../../src/lib/providerConfig";
+import { getAllProviders } from "../../utils/providerStore";
+import { isSafeUrl as validateUrl } from "@/lib/providerConfig";
+import { useRuntimeConfig } from "nitro";
 
 export default defineHandler(async (event) => {
   const body = await readBody(event);
@@ -32,7 +30,7 @@ export default defineHandler(async (event) => {
   }
 
   const allProviders = await getAllProviders();
-  let config = allProviders.find(p => p.enabled);
+  const config = allProviders.find(p => p.enabled);
   
   if (!config) {
     throw createError({ statusCode: 500, statusMessage: "No enabled providers configured" });
@@ -43,9 +41,9 @@ export default defineHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: "Provider configuration error: Unsafe URL" });
   }
 
-  // Proper key existence check
+  // Ensure provider has at least one encrypted key
   if (!config.encryptedKeys || config.encryptedKeys.length === 0) {
-    throw createError({ statusCode: 500, statusMessage: "Provider configuration error" });
+    throw createError({ statusCode: 500, statusMessage: "Provider configuration error: No API key stored" });
   }
 
   const runtimeConfig = useRuntimeConfig();
@@ -53,7 +51,7 @@ export default defineHandler(async (event) => {
   const apiKey = CryptoJS.AES.decrypt(config.encryptedKeys[0], salt).toString(CryptoJS.enc.Utf8);
 
   if (!apiKey) {
-    throw createError({ statusCode: 500, statusMessage: "Provider configuration error" });
+    throw createError({ statusCode: 500, statusMessage: "Provider configuration error: Decryption failed" });
   }
 
   const endpoint = `${config.baseUrl.replace(/\/+$/, "")}${config.modelPath}`;
