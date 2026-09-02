@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Key, Eye, EyeOff, Save, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Key, Eye, EyeOff, Save, CheckCircle2, AlertCircle, Zap, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,69 +7,116 @@ import { toast } from 'sonner';
 import localforage from 'localforage';
 import CryptoJS from 'crypto-js';
 import { useChatStore } from '@/store/useChatStore';
+import { useProviderStore, type Provider } from '@/store/useProviderStore';
 
-const providers = [
-  { id: 'openai', name: 'OpenAI' },
-  { id: 'anthropic', name: 'Anthropic' },
-  { id: 'google', name: 'Google Gemini' },
-  { id: 'groq', name: 'Groq' },
-  { id: 'mistral', name: 'Mistral' },
-  { id: 'openrouter', name: 'OpenRouter' }
+const providersList = [
+  { id: 'openai', name: 'OpenAI', defaultUrl: 'https://api.openai.com/v1' },
+  { id: 'anthropic', name: 'Anthropic', defaultUrl: 'https://api.anthropic.com/v1' },
+  { id: 'google', name: 'Google Gemini', defaultUrl: 'https://generativelanguage.googleapis.com' },
+  { id: 'groq', name: 'Groq', defaultUrl: 'https://api.groq.com/openai/v1' },
+  { id: 'mistral', name: 'Mistral', defaultUrl: 'https://api.mistral.ai/v1' },
+  { id: 'openrouter', name: 'OpenRouter', defaultUrl: 'https://openrouter.ai/api/v1' }
 ];
 
 const ApiKeys = () => {
   const [localKeys, setLocalKeys] = useState<Record<string, string>>({});
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<Record<string, boolean>>({});
-
+  const [testing, setTesting] = useState<Record<string, boolean>>({});
+  const [status, setStatus] = useState<Record<string, 'idle' | 'loading' | 'success' | 'error'>>({});
+  
   const { setApiKeys } = useChatStore();
+  const { providers, updateProvider } = useProviderStore();
 
   useEffect(() => {
     const loadKeys = async () => {
       try {
         const storedKeys = await localforage.getItem<Record<string, string>>('apiKeys');
         if (storedKeys) {
-          // Decrypt each key for UI display
           const decrypted: Record<string, string> = {};
-          const status: Record<string, boolean> = {};
           const salt = process.env.NEXT_PUBLIC_ENCRYPTION_SALT || '';
-          providers.forEach(p => {
+          providersList.forEach(p => {
             const enc = storedKeys[p.id];
             if (enc) {
               try {
                 const bytes = CryptoJS.AES.decrypt(enc, salt);
-                const plain = bytes.toString(CryptoJS.enc.Utf8);
-                decrypted[p.id] = plain;
-                status[p.id] = true;
-              } catch (e) {
-                decrypted[p.id] = '';
-                status[p.id] = false;
-              }
-            } else {
-              decrypted[p.id] = '';
-              status[p.id] = false;
+                decrypted[p.id] = bytes.toString(CryptoJS.enc.Utf8);
+              } catch (e) { decrypted[p.id] = ''; }
             }
           });
           setLocalKeys(decrypted);
-          setSaveStatus(status);
-          // keep encrypted version in store for API calls
           setApiKeys(storedKeys);
         }
       } catch (error) {
-        toast.error('Failed to load API keys from storage');
+        toast.error('Failed to load API keys');
       }
     };
     loadKeys();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleKeyChange = (provider: string, value: string) => {
-    setLocalKeys(prev => ({ ...prev, [provider]: value }));
+  const testConnection = async (providerId: string) => {
+    const key = localKeys[providerId];
+    if (!key) {
+      toast.error(`Please enter a key for ${providerId}`);
+      return;
+    }
+
+    setTesting(prev => ({ ...prev, [providerId]: true }));
+    setStatus(prev => ({ ...prev, [providerId]: 'loading' }));
+
+    try {
+      const pInfo = providersList.find(p => p.id === providerId);
+      let url = `${pInfo?.defaultUrl}/models`;
+      let headers: Record<string, string> = {};
+
+      if (providerId === 'google') {
+        url = `${pInfo?.defaultUrl}/v1beta/models?key=${key}`;
+      } else {
+        headers['Authorization'] = `Bearer ${key}`;
+      }
+
+      const res = await fetch(url, { headers });
+      if (!res.ok) throw new Error('Connection failed');
+      
+      const data = await res.json();
+      let firstModel = 'Unknown';
+      
+      // Extract first model based on common API shapes
+      if (Array.isArray(data.data)) firstModel = data.data[0]?.id || 'Unknown';
+      else if (Array.isArray(data.models)) firstModel = data.models[0]?.name || 'Unknown';
+      else if (Array.isArray(data)) firstModel = data[0]?.id || 'Unknown';
+
+      setStatus(prev => ({ ...prev, [providerId]: 'success' }));
+      
+      // Update Provider Store with detection
+      const existing = providers.find(p => p.id === providerId);
+      updateProvider(providerId, {
+        detectedModel: firstModel,
+        providerType: providerId === 'google' ? 'gemini' : 'openai', // Simplified detection
+        enabled: true,
+      });
+
+      toast.success(`${providerId} connected! Found model: ${firstModel}`);
+    } catch (e) {
+      setStatus(prev => ({ ...prev, [providerId]: 'error' }));
+      toast.error(`${providerId} connection failed`);
+    } finally {
+      setTesting(prev => ({ ...prev, [providerId]: false }));
+    }
   };
 
-  const toggleShowKey = (provider: string) => {
-    setShowKeys(prev => ({ ...prev, [provider]: !prev[provider] }));
+  const testAll = async () => {
+    const allIds = providersList.map(p => p.id);
+    let successCount = 0;
+
+    await Promise.all(allIds.map(async id => {
+      try {
+        await testConnection(id);
+        successCount++;
+      } catch {}
+    }));
+
+    toast.info(`Tested ${allIds.length} keys. ${successCount} succeeded.`);
   };
 
   const saveKeys = async () => {
@@ -77,19 +124,15 @@ const ApiKeys = () => {
     try {
       const salt = process.env.NEXT_PUBLIC_ENCRYPTION_SALT || '';
       const encrypted: Record<string, string> = {};
-      providers.forEach(p => {
+      providersList.forEach(p => {
         const plain = localKeys[p.id];
-        if (plain) {
-          encrypted[p.id] = CryptoJS.AES.encrypt(plain, salt).toString();
-        }
+        if (plain) encrypted[p.id] = CryptoJS.AES.encrypt(plain, salt).toString();
       });
       await localforage.setItem('apiKeys', encrypted);
-      // Update store with encrypted keys for later proxy use
       setApiKeys(encrypted);
-      setSaveStatus(Object.fromEntries(providers.map(p => [p.id, !!encrypted[p.id]])));
-      toast.success('API keys saved successfully to local storage');
+      toast.success('API keys saved securely');
     } catch (error) {
-      toast.error('Failed to save API keys');
+      toast.error('Failed to save keys');
     } finally {
       setIsSaving(false);
     }
@@ -97,48 +140,78 @@ const ApiKeys = () => {
 
   return (
     <div className="max-w-5xl mx-auto w-full p-6 animate-fadeIn">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">API Key Management</h1>
-        <p className="text-gray-400">Your keys are stored locally in your browser's IndexedDB and never leave your device.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">API Key Management</h1>
+          <p className="text-gray-400">Securely store and verify your AI provider keys.</p>
+        </div>
+        <Button 
+          onClick={testAll} 
+          className="bg-gray-700 hover:bg-gray-600 text-white rounded-full px-6 flex items-center gap-2"
+        >
+          <Zap size={18} className="text-yellow-400" /> Check All Keys
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {providers.map(provider => (
-          <Card key={provider.id} className="bg-gray-800/40 border-gray-700 text-white overflow-hidden">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex justify-between items-center text-lg">
+        {providersList.map(provider => {
+          const providerData = providers.find(p => p.id === provider.id);
+          return (
+            <Card key={provider.id} className="bg-gray-800/40 border-gray-700 text-white overflow-hidden group">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex justify-between items-center text-lg">
+                  <div className="flex items-center gap-2">
+                    <Key size={18} className="text-[#6366F1]" />
+                    {provider.name}
+                  </div>
+                  {status[provider.id] === 'success' ? (
+                    <CheckCircle2 size={16} className="text-green-500" />
+                  ) : status[provider.id] === 'error' ? (
+                    <AlertCircle size={16} className="text-red-500" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full bg-gray-600" />
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="flex items-center gap-2">
-                  <Key size={18} className="text-[#6366F1]" />
-                  {provider.name}
+                  <Input
+                    type={showKeys[provider.id] ? 'text' : 'password'}
+                    value={localKeys[provider.id] || ''}
+                    onChange={e => setLocalKeys(prev => ({ ...prev, [provider.id]: e.target.value }))}
+                    placeholder={`Enter ${provider.name} key`}
+                    className="bg-gray-900 border-gray-700 focus:ring-[#6366F1] text-white"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowKeys(prev => ({ ...prev, [provider.id]: !prev[provider.id] }))}
+                    className="text-gray-400 hover:text-white"
+                  >
+                    {showKeys[provider.id] ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </Button>
                 </div>
-                {saveStatus[provider.id] ? (
-                  <CheckCircle2 size={16} className="text-green-500" />
-                ) : (
-                  <AlertCircle size={16} className="text-red-500" />
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <Input
-                  type={showKeys[provider.id] ? 'text' : 'password'}
-                  value={localKeys[provider.id] || ''}
-                  onChange={e => handleKeyChange(provider.id, e.target.value)}
-                  placeholder={`Enter ${provider.name} key`}
-                  className="bg-gray-900 border-gray-700 focus:ring-[#6366F1] text-white"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => toggleShowKey(provider.id)}
-                  className="text-gray-400 hover:text-white hover:bg-gray-700"
-                >
-                  {showKeys[provider.id] ? <EyeOff size={18} /> : <Eye size={18} />}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                
+                <div className="flex flex-col gap-2">
+                  <Button 
+                    onClick={() => testConnection(provider.id)} 
+                    disabled={testing[provider.id]}
+                    variant="outline" 
+                    className="w-full border-gray-600 text-gray-300 hover:bg-gray-700"
+                  >
+                    {testing[provider.id] ? <Loader2 className="animate-spin mr-2" size={16} /> : <Zap className="mr-2" size={16} />}
+                    Test Connection
+                  </Button>
+                  {providerData?.detectedModel && (
+                    <p className="text-xs text-gray-500 text-center italic">
+                      Default model: <span className="text-gray-300 font-mono">{providerData.detectedModel}</span>
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="mt-10 flex justify-end">
