@@ -19,10 +19,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import CryptoJS from 'crypto-js';
 import { useProviderStore, type Provider } from '@/store/useProviderStore';
+import ProviderModal from '@/components/ProviderModal';
 
 // Use Vite's import.meta.env for client‑side env variables
 const SALT = import.meta.env.VITE_ENCRYPTION_SALT || "default-salt";
@@ -89,17 +89,7 @@ const ProviderCard = ({
         testUrl.searchParams.append(form.auth.keyName, `${form.auth.prefix ?? ""}${apiKey}`);
       }
 
-      // Standard probe endpoint: /v1/models
       const probeUrl = `${testUrl.origin}/v1/models`;
-      const res = await fetch(probeUrl, { 
-        method: 'GET', 
-        headers,
-        // If query auth was used, the fetch uses the URL with search params
-        // But we used testUrl.origin, so let's fix that to use the full testUrl if query params were added
-        ...(form.auth.type === 'query' ? { url: testUrl.toString() } : {})
-      });
-
-      // To be truly correct when using query params, we need to use the full testUrl
       const finalUrl = form.auth.type === 'query' ? testUrl.toString() : probeUrl;
       const finalRes = await fetch(finalUrl, { method: 'GET', headers });
 
@@ -272,28 +262,12 @@ const ProviderCard = ({
 };
 
 export default function Providers() {
-  const { providers, addProvider, updateProvider, deleteProvider, loadProviders } = useProviderStore();
+  const { providers, loadProviders, updateProvider, deleteProvider } = useProviderStore();
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newProvider, setNewProvider] = useState({
-    name: '',
-    baseUrl: '',
-    auth: { type: 'header' as const, keyName: 'Authorization', prefix: 'Bearer ' }
-  });
 
   useEffect(() => {
     loadProviders();
   }, []);
-
-  const handleCreate = async () => {
-    if (!newProvider.name || !newProvider.baseUrl) {
-      toast.error("Name and Base URL are required");
-      return;
-    }
-    await addProvider(newProvider);
-    toast.success("Provider created");
-    setShowAddModal(false);
-    setNewProvider({ name: '', baseUrl: '', auth: { type: 'header', keyName: 'Authorization', prefix: 'Bearer ' } });
-  };
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8 animate-fadeIn">
@@ -321,63 +295,10 @@ export default function Providers() {
         ))}
       </div>
 
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="bg-gray-800 border-gray-700 text-white rounded-3xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">Add New Provider</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Provider Name</Label>
-              <Input 
-                placeholder="e.g. My Local LLM" 
-                value={newProvider.name} 
-                onChange={e => setNewProvider({...newProvider, name: e.target.value})}
-                className="bg-gray-900 border-gray-700" 
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Base URL</Label>
-              <Input 
-                placeholder="https://api.openai.com/v1" 
-                value={newProvider.baseUrl} 
-                onChange={e => setNewProvider({...newProvider, baseUrl: e.target.value})}
-                className="bg-gray-900 border-gray-700" 
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Auth Type</Label>
-                <Select 
-                  value={newProvider.auth.type} 
-                  onValueChange={v => setNewProvider({...newProvider, auth: {...newProvider.auth, type: v as any}})}
-                >
-                  <SelectTrigger className="bg-gray-900 border-gray-700">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="header">Header</SelectItem>
-                    <SelectItem value="query">Query</SelectItem>
-                    <SelectItem value="body">Body</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Auth Key Name</Label>
-                <Input 
-                  placeholder="Authorization" 
-                  value={newProvider.auth.keyName} 
-                  onChange={e => setNewProvider({...newProvider, auth: {...newProvider.auth, keyName: e.target.value}})}
-                  className="bg-gray-900 border-gray-700" 
-                />
-              </div>
-            </div>
-            <Button onClick={handleCreate} className="w-full bg-[#6366F1] hover:bg-[#4f46e5] py-6 font-bold">
-              Create Provider
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ProviderModal 
+        open={showAddModal} 
+        onClose={() => setShowAddModal(false)} 
+      />
     </div>
   );
 }
