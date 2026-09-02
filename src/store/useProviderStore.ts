@@ -86,10 +86,14 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
     set({ providers: updated });
   },
 
+  // Persist usage data and the entire provider list after updates
   setUsageData: (providerId, usage) => {
-    const updated = get().providers.map((p) => 
-      p.id === providerId ? { ...p, usage } : p
-    );
-    set({ providers: updated });
+    set((state) => ({
+      providers: state.providers.map(p =>
+        p.id === providerId ? { ...p, usage } : p
+      ),
+    }));
+    // Save the updated providers array to local storage
+    saveProviders(get().providers);
   },
 }));
