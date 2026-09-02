@@ -19,7 +19,7 @@ const DeveloperGateway = () => {
   };
 
   const scrollToBottom = () => {
-    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
   };
 
   const baseUrl = window.location.origin + "/api/v1";
@@ -28,7 +28,7 @@ const DeveloperGateway = () => {
     <div className="max-w-4xl mx-auto p-6 animate-fadeIn space-y-8 relative">
       <div className="space-y-2">
         <h1 className="text-4xl font-bold text-white tracking-tight">Developer Gateway</h1>
-        <p className="text-gray-400 text-lg">Configure your external applications to route requests through the OmniLLM Unified Proxy.</p>
+        <p className="text-gray-400 text-lg">Configure your external applications to route requests through OmniLLM using a single unified API key.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -43,20 +43,20 @@ const DeveloperGateway = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
-              <Input 
-                readOnly 
-                value={unifiedKey} 
+              <Input
+                readOnly
+                value={unifiedKey}
                 className="bg-gray-900 border-gray-700 text-white font-mono"
               />
               <Button size="icon" onClick={() => copyToClipboard(unifiedKey)} className="bg-[#6366F1] hover:bg-[#4f46e5]">
                 <Copy size={18} />
               </Button>
             </div>
-            <Button 
-              onClick={refreshKey} 
+            <Button
+              onClick={refreshKey}
               disabled={loading}
-              variant="outline" 
-              className="text-gray-300 border-gray-600 hover:bg-gray-700 w-full"
+              variant="outline"
+              className="text-gray-300 border-gray-600 hover:bg-gray-700 w-full flex items-center justify-center"
             >
               {loading ? <RefreshCw className="mr-2 animate-spin" size={16} /> : <RefreshCw className="mr-2" size={16} />}
               Regenerate Unified Key
@@ -90,7 +90,7 @@ const DeveloperGateway = () => {
               { name: "Chat Completions", path: "/chat/completions", desc: "OpenAI compatible routing" },
               { name: "Messages API", path: "/messages", desc: "Anthropic compatible routing" },
               { name: "Embeddings", path: "/embeddings", desc: "Vector generation" },
-            ].map(ep => (
+            ].map((ep) => (
               <div key={ep.path} className="space-y-1 p-3 rounded-lg bg-gray-900/50 border border-gray-700">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">{ep.name}</span>
@@ -116,7 +116,7 @@ const DeveloperGateway = () => {
 
       <div className="h-20" /> {/* Spacer for bottom button */}
 
-      <button 
+      <button
         onClick={scrollToBottom}
         className="fixed bottom-8 right-8 p-3 bg-[#6366F1] text-white rounded-full shadow-lg hover:bg-[#4f46e5] transition-all hover:scale-110 active:scale-95"
       >
