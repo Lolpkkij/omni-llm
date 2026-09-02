@@ -36,24 +36,6 @@ export default function ModelSelector({ value, onChange, providers, disabled }: 
     providers.some(p => p.enabled && p.encryptedKeys?.length && p.providerType === m.providerType)
   );
 
-  const getModelLabel = (modelId: string) => {
-    if (modelId === AUTO_FREE) return "Auto [Free]";
-    if (modelId === AUTO_PREMIUM) return "Auto [Premium]";
-    const model = MODEL_CATALOG.find(m => m.id === modelId);
-    return model?.name || modelId;
-  };
-
-  const getModelBadge = (modelId: string) => {
-    if (modelId === AUTO_FREE) return <Zap className="w-4 h-4 text-green-400" title="Best free model" />;
-    if (modelId === AUTO_PREMIUM) return <Sparkles className="w-4 h-4 text-yellow-400" title="Best model (premium)" />;
-    const model = MODEL_CATALOG.find(m => m.id === modelId);
-    return model?.isFree ? (
-      <span className="text-xs text-green-400">Free</span>
-    ) : (
-      <span className="text-xs text-yellow-400">Paid</span>
-    );
-  };
-
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled || !hasAnyProvider}>
       <SelectTrigger className="w-full bg-gray-900 border-gray-700 text-white data-[placeholder]:text-gray-500">
@@ -82,19 +64,6 @@ export default function ModelSelector({ value, onChange, providers, disabled }: 
             </div>
             <span className="text-xs text-yellow-400 font-medium">PREMIUM</span>
           </SelectItem>
-          {!hasPremiumAccess && (
-            <SelectItem 
-              value="" 
-              disabled 
-              className="text-xs text-gray-500 italic px-3 py-1 cursor-help"
-              onMouseEnter={(e) => {
-                const target = e.currentTarget;
-                target.title = "Upgrade to Premium to unlock auto-premium model selection";
-              }}
-            >
-              🔒 Upgrade to Premium for auto-premium
-            </SelectItem>
-          )}
         </SelectGroup>
 
         {/* Manual models by provider */}
