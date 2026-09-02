@@ -9,19 +9,17 @@ type ChatState = {
   selectedModel: string;
   selectedProvider: string;
   messages: Message[];
-  apiKeys: Record<string, string>; // encrypted keys stored in state
+  apiKeys: Record<string, string>; 
   usageData: Record<string, any>;
+  unifiedKey: string;
 
   setSelectedModel: (model: string) => void;
   setSelectedProvider: (provider: string) => void;
   setApiKeys: (keys: Record<string, string>) => void;
   setUsageData: (data: Record<string, any>) => void;
+  setUnifiedKey: (key: string) => void;
 
   addUserMessage: (content: string) => void;
-  /**
-   * If `replaceLast` is true the newest assistant message is replaced –
-   * used for streaming simulation.
-   */
   addAssistantMessage: (content: string, replaceLast?: boolean) => void;
   clearChat: () => void;
 };
@@ -32,11 +30,13 @@ export const useChatStore = create<ChatState>((set) => ({
   messages: [],
   apiKeys: {},
   usageData: {},
+  unifiedKey: "",
 
   setSelectedModel: (model) => set({ selectedModel: model }),
   setSelectedProvider: (provider) => set({ selectedProvider: provider }),
   setApiKeys: (keys) => set({ apiKeys: keys }),
   setUsageData: (data) => set({ usageData: data }),
+  setUnifiedKey: (key) => set({ unifiedKey: key }),
 
   addUserMessage: (content) =>
     set((state) => ({

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, Key, Server, Menu, X } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Key, Server, Menu, X, Code2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/api-keys", label: "API Keys", icon: Key },
+  { href: "/providers", label: "Providers", icon: Server },
+  { href: "/developer", label: "Developer", icon: Code2 },
   { href: "/local-hub", label: "Local Hub", icon: Server },
 ];
 

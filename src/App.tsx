@@ -10,6 +10,7 @@ import ApiKeys from "./pages/ApiKeys";
 import LocalHub from "./pages/LocalHub";
 import Dashboard from "./pages/Dashboard";
 import Providers from "./pages/Providers";
+import Developer from "./pages/Developer";
 import Sidebar from "./components/Sidebar";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
               <Route path="/api-keys" element={<ApiKeys />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/providers" element={<Providers />} />
+              <Route path="/developer" element={<Developer />} />
               <Route path="/local-hub" element={<LocalHub />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
