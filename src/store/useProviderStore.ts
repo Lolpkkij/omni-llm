@@ -14,7 +14,8 @@ interface ProviderState {
 }
 
 const STORAGE_KEY = "omni_providers_config";
-const SALT = process.env.NEXT_PUBLIC_ENCRYPTION_SALT || "default-salt";
+// Use import.meta.env instead of process.env for Vite
+const SALT = import.meta.env.VITE_ENCRYPTION_SALT || "default-salt";
 
 export const useProviderStore = create<ProviderState>((set, get) => ({
   providers: [],
