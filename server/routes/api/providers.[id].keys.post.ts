@@ -1,33 +1,48 @@
 import { defineHandler } from "nitro";
-import { readBody, createError } from "nitro/h3";
-import { updateProvider } from "../../../utils/providerStore";
+import { readBody, getRouterParam, createError } from "nitro/h3";
+import CryptoJS from "crypto-js";
+import { getAllProviders, updateProvider } from "../utils/providerStore";
 
-/**
- * Store an API key for a provider. The key is encrypted server‑side using the server salt.
- * Expected payload: { encryptedKey: string }
- */
 export default defineHandler(async (event) => {
-  const { id } = (await readBody(event)) as { id?: string };
-  // The provider ID is part of the route param
-  const { id: providerId } = event.context.params ?? {};
+  const providerId = getRouterParam(event, "id");
   if (!providerId) {
-    throw createError({ statusCode: 400, statusMessage: "Provider ID missing in URL" });
+    throw createError({ statusCode: 400, statusMessage: "Provider ID is required" });
   }
-  const { encryptedKey } = await readBody(event);
-  if (!encryptedKey) {
-    throw createError({ statusCode: 400, statusMessage: "encryptedKey required" });
+
+  const body = await readBody<{ apiKey: string }>(event);
+  if (!body?.apiKey) {
+    throw createError({ statusCode: 400, statusMessage: "API key is required" });
   }
-  // Append the new encrypted key to the provider's encryptedKeys array
+
+  const config = useRuntimeConfig();
+  const salt = (config as any).NITRO_ENCRYPTION_SALT;
+  
+  if (!salt) {
+    throw createError({ 
+      statusCode: 500, 
+      statusMessage: "Server encryption salt is not configured" 
+    });
+  }
+
   try {
     const allProviders = await getAllProviders();
     const provider = allProviders.find((p) => p.id === providerId);
     if (!provider) {
       throw createError({ statusCode: 404, statusMessage: "Provider not found" });
     }
-    const updatedKeys = [...(provider.encryptedKeys ?? []), encryptedKey];
+
+    // Encrypt the key using the server-side salt
+    const encryptedKey = CryptoJS.AES.encrypt(body.apiKey, salt).toString();
+    
+    // Append the new encrypted key to the provider's list
+    const updatedKeys = [...(provider.encryptedKeys || []), encryptedKey];
     await updateProvider(providerId, { encryptedKeys: updatedKeys });
-    return { ok: true };
-  } catch (e) {
-    throw createError({ statusCode: 500, statusMessage: "Failed to store key" });
+
+    return { ok: true, message: "API key stored securely" };
+  } catch (e: any) {
+    throw createError({ 
+      statusCode: e.statusCode || 500, 
+      statusMessage: e.statusMessage || "Failed to store API key" 
+    });
   }
 });
