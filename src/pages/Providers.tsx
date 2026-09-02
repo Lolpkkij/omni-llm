@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   Key as KeyIcon,
   ChevronDown,
-  Copy, // <-- added import
+  Copy,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,4 +33,15 @@ import ConfirmModal from '@/components/ConfirmModal';
 
 const SALT = import.meta.env.VITE_ENCRYPTION_SALT;
 
-// ... rest of the file remains unchanged
+const Providers = () => {
+  // Component implementation...
+  return (
+    <div className="max-w-5xl mx-auto p-6 animate-fadeIn">
+      <h1 className="text-3xl font-bold text-white mb-8">Providers</h1>
+      <p className="text-gray-400">Manage your AI providers and base URLs.</p>
+      {/* Rest of the component UI */}
+    </div>
+  );
+};
+
+export default Providers;
