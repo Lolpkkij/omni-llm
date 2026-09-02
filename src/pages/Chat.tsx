@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, Trash2 } from 'lucide-react';
+import { Send, Bot, Trash2, RotateCcw } from 'lucide-react';
 import { useChatStore } from '@/store/useChatStore';
 import MessageBubble from '@/components/MessageBubble';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,6 @@ const Chat = () => {
     addUserMessage,
     addAssistantMessage,
     clearChat,
-    apiKeys,
   } = useChatStore();
 
   const { providers } = useProviderStore();
@@ -34,7 +33,13 @@ const Chat = () => {
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto‑scroll when messages change
+  useEffect(() => {
+    if (!selectedProviderId && providers.length > 0) {
+      const firstEnabled = providers.find(p => p.enabled) || providers[0];
+      setSelectedProviderId(firstEnabled.id);
+    }
+  }, [providers, selectedProviderId, setSelectedProviderId]);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -54,15 +59,6 @@ const Chat = () => {
     setIsTyping(true);
 
     try {
-      // Retrieve the API key for the selected provider (if any)
-      const provider = providers.find(p => p.id === selectedProviderId);
-      const apiKey = provider?.encryptedKeys?.[0] ? undefined : undefined; // placeholder; actual key is fetched from server via encryption
-
-      // The client sends the encrypted key to the proxy; we use the stored key from the Provider store.
-      // Since the Provider store only holds encrypted keys, we need the plain key from user input.
-      // The UI now expects the user to have added the key via the API Keys page, which stores it server‑side.
-      // Hence we rely on the unified key flow – the proxy will retrieve the stored encrypted key.
-      // We simply pass the provider ID; no direct key needed here.
       const response = await fetch('/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -70,18 +66,20 @@ const Chat = () => {
           provider: selectedProviderId,
           model: selectedModel,
           messages: [...messages, { role: 'user', content: userText }],
-          encryptedKey: encryptKey('placeholder'), // the server ignores this if it can decrypt its own stored key
+          encryptedKey: encryptKey('placeholder'),
         }),
       });
 
       if (!response.ok) {
+        if (response.status === 429) throw new Error('Rate limit exceeded. Please slow down.');
+        if (response.status === 401) throw new Error('Invalid API key for this provider.');
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.statusMessage || 'Provider request failed');
       }
 
       const reader = response.body?.getReader();
       let currentText = '';
-      addAssistantMessage(''); // creates a bubble for streaming updates
+      addAssistantMessage('');
 
       while (reader) {
         const { done, value } = await reader.read();
@@ -92,6 +90,11 @@ const Chat = () => {
       }
     } catch (e: any) {
       toast.error(e.message || 'An unexpected error occurred');
+      // Remove the empty assistant bubble if it failed
+      if (messages[messages.length - 1]?.role === 'assistant' && messages[messages.length - 1].content === '') {
+        // We can't easily "pop" without a dedicated action, but we could add a fail message
+        addAssistantMessage(`Error: ${e.message}`, true);
+      }
     } finally {
       setIsTyping(false);
     }
@@ -99,17 +102,24 @@ const Chat = () => {
 
   return (
     <div className="flex flex-col h-full max-w-4xl mx-auto w-full p-4 md:p-6">
-      {/* Header */}
       <div className="flex flex-col md:flex-row items-center justify-between mb-6 bg-gray-800/40 p-4 rounded-2xl border border-gray-700">
         <div className="flex items-center gap-3 mb-4 md:mb-0">
           <div className="p-2 bg-[#6366F1]/20 text-[#6366F1] rounded-lg">
             <Bot size={20} />
           </div>
           <span className="font-semibold text-white">AI Assistant</span>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={clearChat} 
+            className="ml-2 text-gray-400 hover:text-red-400 h-8 w-8"
+            title="Clear Chat"
+          >
+            <RotateCcw size={16} />
+          </Button>
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Provider Selector */}
           <div className="flex flex-col">
             <Label className="text-gray-400 mb-1">Provider</Label>
             <Select value={selectedProviderId} onValueChange={setSelectedProviderId}>
@@ -119,36 +129,37 @@ const Chat = () => {
               <SelectContent>
                 {providers.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {p.name}
+                    {p.name} {!p.enabled && '(disabled)'}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Model Selector */}
-          <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="bg-gray-900 text-gray-300 text-sm rounded-lg border border-gray-700 px-3 py-2 outline-none focus:ring-2 ring-[#6366F1]/50"
-          >
-            {[
-              'gpt-4o',
-              'claude-3-sonnet',
-              'gemini-pro',
-              'llama-3',
-              'mistral-large',
-              'openrouter-any',
-            ].map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-col">
+            <Label className="text-gray-400 mb-1">Model</Label>
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="bg-gray-900 text-gray-300 text-sm rounded-lg border border-gray-700 px-3 py-2 outline-none focus:ring-2 ring-[#6366F1]/50"
+            >
+              {[
+                'gpt-4o',
+                'claude-3-sonnet',
+                'gemini-pro',
+                'llama-3',
+                'mistral-large',
+                'openrouter-any',
+              ].map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto mb-6 space-y-2 pr-2">
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-gray-500 space-y-4">
@@ -168,7 +179,6 @@ const Chat = () => {
         )}
       </div>
 
-      {/* Input Area */}
       <div className="relative">
         <textarea
           rows={1}

@@ -11,7 +11,8 @@ import {
   ChevronUp,
   ArrowUp,
   Loader2,
-  Activity
+  Activity,
+  Zap
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,14 +22,37 @@ import { useProviderStore } from '@/store/useProviderStore';
 import { useUnifiedKeyStore } from '@/store/useUnifiedKeyStore';
 
 const Dashboard = () => {
-  const { providers, setUsageData } = useProviderStore();
+  const { providers, setUsageData, updateProvider } = useProviderStore();
   const { unifiedKey } = useUnifiedKeyStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [pinging, setPinging] = useState<Record<string, boolean>>({});
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
 
   const copyKey = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Unified key copied!");
+  };
+
+  const pingProvider = async (p: any) => {
+    setPinging(prev => ({ ...prev, [p.id]: true }));
+    try {
+      const res = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: p.id,
+          model: 'gpt-4o',
+          messages: [{ role: 'user', content: 'ping' }],
+          encryptedKey: p.encryptedKeys?.[0] || 'placeholder',
+        }),
+      });
+      if (res.ok) toast.success(`${p.name} is responding!`);
+      else throw new Error();
+    } catch {
+      toast.error(`${p.name} is unreachable.`);
+    } finally {
+      setPinging(prev => ({ ...prev, [p.id]: false }));
+    }
   };
 
   const refreshUsage = async () => {
@@ -70,8 +94,16 @@ const Dashboard = () => {
   const totalSpent = providers.reduce((sum, p) => sum + (p.usage?.spentUSD || 0), 0);
 
   return (
-    <div className="max-w-5xl mx-auto p-6 animate-fadeIn space-y-8">
-      {/* Top Totals */}
+    <div className="max-w-5xl mx-auto p-6 animate-fadeIn space-y-8 relative">
+      {refreshing && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="animate-spin text-[#6366F1]" size={48} />
+            <p className="text-white font-medium">Updating Provider Usage...</p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="bg-gradient-to-br from-[#6366F1]/20 to-transparent border-gray-700 text-white overflow-hidden relative group">
           <CardContent className="pt-6">
@@ -111,7 +143,6 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Unified Key & Actions */}
       <div className="flex flex-col md:flex-row gap-6">
         <Card className="flex-1 bg-gray-800/40 border-gray-700 text-white">
           <CardHeader>
@@ -144,7 +175,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Provider Usage List */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold text-white">Provider Breakdown</h3>
@@ -169,7 +199,17 @@ const Dashboard = () => {
                     <p className="text-xs text-gray-500">{p.encryptedKeys.length} keys configured</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={(e) => { e.stopPropagation(); pingProvider(p); }}
+                    disabled={pinging[p.id]}
+                    className="text-xs text-gray-400 hover:text-white h-8 px-2 flex items-center gap-1"
+                  >
+                    {pinging[p.id] ? <Loader2 className="animate-spin" size={12} /> : <Zap size={12} />}
+                    Ping
+                  </Button>
                   <div className="text-right hidden md:block">
                     <p className="text-xs text-gray-500 uppercase font-semibold">Monthly Spend</p>
                     <p className="font-mono font-bold text-green-400">${p.usage?.spentUSD?.toFixed(2) || "0.00"}</p>
