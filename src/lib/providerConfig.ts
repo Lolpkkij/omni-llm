@@ -11,6 +11,7 @@ export const ProviderSchema = z.object({
   }),
   encryptedKeys: z.array(z.string()), // each key is stored encrypted
   providerType: z.enum(["openai","anthropic","gemini","custom"]).optional(),
+  detectedModel: z.string().optional(), // Added to fix TS2353 and TS2339
   enabled: z.boolean().default(true),
   order: z.number().int().optional(),
 });

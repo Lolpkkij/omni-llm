@@ -2,6 +2,9 @@ import { create } from "zustand";
 import type { Provider } from "@/lib/providerConfig";
 import { loadProviders, saveProviders } from "@/lib/providerPersistence";
 
+// Re-export Provider so components can import it from the store if they wish
+export type { Provider };
+
 interface ProviderState {
   providers: Provider[];
   /** Load providers from storage (called on app start) */
