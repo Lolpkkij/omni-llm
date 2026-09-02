@@ -9,7 +9,8 @@ import {
   Database, 
   ChevronDown, 
   ChevronUp,
-  ArrowUp
+  ArrowUp,
+  Loader2
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
