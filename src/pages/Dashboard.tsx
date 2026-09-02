@@ -10,7 +10,8 @@ import {
   ChevronDown, 
   ChevronUp,
   ArrowUp,
-  Loader2
+  Loader2,
+  Activity
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -72,31 +73,41 @@ const Dashboard = () => {
     <div className="max-w-5xl mx-auto p-6 animate-fadeIn space-y-8">
       {/* Top Totals */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-gradient-to-br from-[#6366F1]/20 to-transparent border-gray-700 text-white">
+        <Card className="bg-gradient-to-br from-[#6366F1]/20 to-transparent border-gray-700 text-white overflow-hidden relative group">
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm font-medium">Total Tokens Used</p>
-                <h2 className="text-4xl font-bold mt-1 font-mono">{totalTokens.toLocaleString()}</h2>
+            <div className="flex items-center justify-between relative z-10">
+              <div className="space-y-1">
+                <p className="text-gray-400 text-sm font-medium flex items-center gap-2">
+                  <Activity size={14} /> Total Tokens Used
+                </p>
+                <h2 className="text-4xl font-bold mt-1 font-mono tracking-tight">{totalTokens.toLocaleString()}</h2>
               </div>
-              <div className="p-3 bg-[#6366F1]/20 rounded-2xl text-[#6366F1]">
+              <div className="p-3 bg-[#6366F1]/20 rounded-2xl text-[#6366F1] group-hover:scale-110 transition-transform">
                 <TrendingUp size={32} />
               </div>
             </div>
           </CardContent>
+          <div className="absolute -right-4 -bottom-4 opacity-10 text-white group-hover:opacity-20 transition-opacity">
+            <TrendingUp size={120} />
+          </div>
         </Card>
-        <Card className="bg-gradient-to-br from-green-500/10 to-transparent border-gray-700 text-white">
+        <Card className="bg-gradient-to-br from-green-500/10 to-transparent border-gray-700 text-white overflow-hidden relative group">
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm font-medium">Total Spend (USD)</p>
-                <h2 className="text-4xl font-bold mt-1 font-mono">${totalSpent.toFixed(2)}</h2>
+            <div className="flex items-center justify-between relative z-10">
+              <div className="space-y-1">
+                <p className="text-gray-400 text-sm font-medium flex items-center gap-2">
+                  <CreditCard size={14} /> Total Spend (USD)
+                </p>
+                <h2 className="text-4xl font-bold mt-1 font-mono tracking-tight">${totalSpent.toFixed(2)}</h2>
               </div>
-              <div className="p-3 bg-green-500/20 rounded-2xl text-green-500">
+              <div className="p-3 bg-green-500/20 rounded-2xl text-green-500 group-hover:scale-110 transition-transform">
                 <CreditCard size={32} />
               </div>
             </div>
           </CardContent>
+          <div className="absolute -right-4 -bottom-4 opacity-10 text-white group-hover:opacity-20 transition-opacity">
+            <CreditCard size={120} />
+          </div>
         </Card>
       </div>
 
@@ -113,7 +124,7 @@ const Dashboard = () => {
               <Input 
                 readOnly 
                 value={unifiedKey} 
-                className="bg-gray-900 border-gray-700 font-mono text-sm"
+                className="bg-gray-900 border-gray-700 font-mono text-sm focus-visible:ring-0"
               />
               <Button size="icon" onClick={() => copyKey(unifiedKey)} className="bg-[#6366F1] hover:bg-[#4f46e5]">
                 <Copy size={18} />
@@ -125,7 +136,7 @@ const Dashboard = () => {
           <Button 
             onClick={refreshUsage} 
             disabled={refreshing}
-            className="h-14 px-6 bg-white text-gray-900 hover:bg-gray-200 font-bold rounded-xl transition-all"
+            className="h-14 px-6 bg-white text-gray-900 hover:bg-gray-200 font-bold rounded-xl transition-all hover:scale-105 active:scale-95"
           >
             {refreshing ? <Loader2 className="animate-spin mr-2" size={20} /> : <RefreshCw className="mr-2" size={20} />}
             Refresh Usage
@@ -135,7 +146,10 @@ const Dashboard = () => {
 
       {/* Provider Usage List */}
       <div className="space-y-4">
-        <h3 className="text-xl font-bold text-white mb-4">Provider Breakdown</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold text-white">Provider Breakdown</h3>
+          <span className="text-xs text-gray-500">{providers.length} configured providers</span>
+        </div>
         {providers.length === 0 && (
           <div className="text-center py-12 text-gray-500 border-2 border-dashed border-gray-800 rounded-3xl">
             No providers configured. Add some in the Providers tab!
@@ -149,22 +163,22 @@ const Dashboard = () => {
                 onClick={() => setExpandedProvider(expandedProvider === p.id ? null : p.id)}
               >
                 <div className="flex items-center gap-4">
-                  <div className={cn("w-2 h-2 rounded-full", p.enabled ? "bg-green-500" : "bg-red-500")} />
-                  <div>
+                  <div className={cn("w-2 h-2 rounded-full", p.enabled ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-500")} />
+                  <div className="flex flex-col">
                     <p className="font-bold">{p.name}</p>
                     <p className="text-xs text-gray-500">{p.encryptedKeys.length} keys configured</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="text-right hidden md:block">
-                    <p className="text-xs text-gray-500 uppercase">Monthly Spend</p>
-                    <p className="font-mono font-bold">${p.usage?.spentUSD?.toFixed(2) || "0.00"}</p>
+                    <p className="text-xs text-gray-500 uppercase font-semibold">Monthly Spend</p>
+                    <p className="font-mono font-bold text-green-400">${p.usage?.spentUSD?.toFixed(2) || "0.00"}</p>
                   </div>
                   <div className="text-right hidden md:block">
-                    <p className="text-xs text-gray-500 uppercase">Tokens</p>
+                    <p className="text-xs text-gray-500 uppercase font-semibold">Tokens</p>
                     <p className="font-mono font-bold">{p.usage?.tokensThisMonth?.toLocaleString() || "0"}</p>
                   </div>
-                  {expandedProvider === p.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                  {expandedProvider === p.id ? <ChevronUp size={20} className="text-gray-400" /> : <ChevronDown size={20} className="text-gray-400" />}
                 </div>
               </div>
 
@@ -175,7 +189,7 @@ const Dashboard = () => {
                       <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Model Consumption</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {p.usage.models.map((m, i) => (
-                          <div key={i} className="flex justify-between items-center p-3 bg-gray-800 rounded-xl border border-gray-700">
+                          <div key={i} className="flex justify-between items-center p-3 bg-gray-800 rounded-xl border border-gray-700 group hover:border-gray-600 transition-colors">
                             <span className="text-sm font-medium">{m.name}</span>
                             <span className="font-mono text-sm text-gray-400">{m.tokens.toLocaleString()} tokens</span>
                           </div>
@@ -204,7 +218,8 @@ const Dashboard = () => {
   );
 };
 
-// Helper to avoid repeated tailwind logic
-const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');
+function cn(...classes: any[]) {
+  return classes.filter(Boolean).join(' ');
+}
 
 export default Dashboard;

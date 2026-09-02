@@ -1,19 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Key, Save, CheckCircle2, AlertCircle, Zap, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { useProviderStore } from '@/store/useProviderStore';
-
-const providersList = [
-  { id: 'openai', name: 'OpenAI', defaultUrl: 'https://api.openai.com/v1' },
-  { id: 'anthropic', name: 'Anthropic', defaultUrl: 'https://api.anthropic.com/v1' },
-  { id: 'google', name: 'Google Gemini', defaultUrl: 'https://generativelanguage.googleapis.com' },
-  { id: 'groq', name: 'Groq', defaultUrl: 'https://api.groq.com/openai/v1' },
-  { id: 'mistral', name: 'Mistral', defaultUrl: 'https://api.mistral.ai/v1' },
-  { id: 'openrouter', name: 'OpenRouter', defaultUrl: 'https://openrouter.ai/api/v1' }
-];
 
 const ApiKeys = () => {
   const [localKeys, setLocalKeys] = useState<Record<string, string>>({});
@@ -23,13 +14,10 @@ const ApiKeys = () => {
 
   const { providers, updateProvider } = useProviderStore();
 
-  /* --------------------------------------------------------------------- */
-  /* Test a single provider connection (unchanged)                         */
-  /* --------------------------------------------------------------------- */
-  const testConnection = async (providerId: string) => {
+  const testConnection = async (providerId: string, providerName: string) => {
     const key = localKeys[providerId];
     if (!key) {
-      toast.error(`Please enter a key for ${providerId}`);
+      toast.error(`Please enter a key for ${providerName}`);
       return;
     }
 
@@ -37,70 +25,42 @@ const ApiKeys = () => {
     setStatus(prev => ({ ...prev, [providerId]: 'loading' }));
 
     try {
-      const pInfo = providersList.find(p => p.id === providerId);
-      if (!pInfo) throw new Error('Provider info not found');
+      const provider = providers.find(p => p.id === providerId);
+      if (!provider) throw new Error('Provider not found in store');
 
-      const testUrl = new URL(pInfo.defaultUrl);
+      const testUrl = new URL(provider.baseUrl);
       const headers: Record<string, string> = { "Content-Type": "application/json" };
 
-      if (providerId === 'google') {
-        testUrl.searchParams.append('key', key);
-      } else {
-        headers['Authorization'] = `Bearer ${key}`;
+      if (provider.auth.type === 'header') {
+        headers[provider.auth.keyName] = `${provider.auth.prefix ?? ''}${key}`;
+      } else if (provider.auth.type === 'query') {
+        testUrl.searchParams.append(provider.auth.keyName, `${provider.auth.prefix ?? ''}${key}`);
       }
 
-      // Generic model‑list endpoint
-      const probeUrl = `${testUrl.origin}/v1/models`;
-      const finalUrl = testUrl.searchParams.toString() ? testUrl.toString() : probeUrl;
+      // Attempt to hit the model list or the configured path
+      const probeUrl = provider.modelPath || '/v1/models';
+      const finalUrl = provider.auth.type === 'query' ? testUrl.toString() : `${testUrl.origin}${probeUrl}`;
 
       const res = await fetch(finalUrl, { headers });
       if (!res.ok) throw new Error('Connection failed');
 
-      const data = await res.json();
-      let firstModel = 'Unknown';
-      if (Array.isArray(data.data)) firstModel = data.data[0]?.id ?? 'Unknown';
-      else if (Array.isArray(data.models)) firstModel = data.models[0]?.name ?? 'Unknown';
-      else if (Array.isArray(data)) firstModel = data[0]?.id ?? 'Unknown';
-
       setStatus(prev => ({ ...prev, [providerId]: 'success' }));
-
-      // Persist detected model & provider type in the local store
-      await updateProvider(providerId, {
-        detectedModel: firstModel,
-        providerType: providerId === 'google' ? 'gemini' : 'openai',
-        enabled: true,
-      });
-
-      toast.success(`${providerId} connected! Detected model: ${firstModel}`);
+      toast.success(`${providerName} connection verified!`);
     } catch {
       setStatus(prev => ({ ...prev, [providerId]: 'error' }));
-      toast.error(`${providerId} connection failed`);
+      toast.error(`${providerName} connection failed`);
     } finally {
       setTesting(prev => ({ ...prev, [providerId]: false }));
     }
   };
 
-  /* --------------------------------------------------------------------- */
-  /* Test **all** providers at once                                         */
-  /* --------------------------------------------------------------------- */
-  const testAll = async () => {
-    const promises = providersList.map(p => testConnection(p.id));
-    await Promise.all(promises);
-  };
-
-  /* --------------------------------------------------------------------- */
-  /* Save all keys – POST to server for encryption                         */
-  /* --------------------------------------------------------------------- */
   const saveKeys = async () => {
     setIsSaving(true);
     try {
-      const providerIds = providersList.map(p => p.id);
-
+      const entries = Object.entries(localKeys);
+      
       await Promise.all(
-        providerIds.map(async (id) => {
-          const plainKey = localKeys[id];
-          if (!plainKey) return;
-
+        entries.map(async ([id, plainKey]) => {
           const response = await fetch(`/api/providers/${id}/keys`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -111,16 +71,10 @@ const ApiKeys = () => {
             const err = await response.json().catch(() => ({}));
             throw new Error(err.message || `Failed to store key for ${id}`);
           }
-
-          // Remove saved key from UI
-          setLocalKeys(prev => {
-            const copy = { ...prev };
-            delete copy[id];
-            return copy;
-          });
         })
       );
 
+      setLocalKeys({});
       toast.success('All API keys saved securely on the server');
     } catch (e: any) {
       toast.error(e.message || 'Failed to save keys');
@@ -134,88 +88,86 @@ const ApiKeys = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">API Key Management</h1>
-          <p className="text-gray-400">Securely verify and update your AI provider keys.</p>
+          <p className="text-gray-400">Securely verify and update keys for your configured providers.</p>
         </div>
-        <Button
-          onClick={testAll}
-          className="bg-gray-700 hover:bg-gray-600 text-white rounded-full px-6 flex items-center gap-2"
-        >
-          <Zap size={18} className="text-yellow-400" /> Check All Keys
-        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {providersList.map(provider => {
-          const providerData = providers.find(p => p.id === provider.id);
-          return (
-            <Card key={provider.id} className="bg-gray-800/40 border-gray-700 text-white overflow-hidden group">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex justify-between items-center text-lg">
-                  <div className="flex items-center gap-2">
-                    <Key size={18} className="text-[#6366F1]" />
-                    {provider.name}
-                  </div>
-                  {status[provider.id] === 'success' ? (
-                    <CheckCircle2 size={16} className="text-green-500" />
-                  ) : status[provider.id] === 'error' ? (
-                    <AlertCircle size={16} className="text-red-500" />
-                  ) : (
-                    <div className="w-4 h-4 rounded-full bg-gray-600" />
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+        {providers.map(provider => (
+          <Card key={provider.id} className="bg-gray-800/40 border-gray-700 text-white overflow-hidden group">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex justify-between items-center text-lg">
                 <div className="flex items-center gap-2">
-                  <Input
-                    type="password"
-                    value={localKeys[provider.id] || ''}
-                    onChange={e => setLocalKeys(prev => ({ ...prev, [provider.id]: e.target.value }))}
-                    placeholder={`Enter ${provider.name} key`}
-                    className="bg-gray-900 border-gray-700 focus:ring-[#6366F1] text-white"
-                  />
+                  <Key size={18} className="text-[#6366F1]" />
+                  {provider.name}
                 </div>
+                {status[provider.id] === 'success' ? (
+                  <CheckCircle2 size={16} className="text-green-500" />
+                ) : status[provider.id] === 'error' ? (
+                  <AlertCircle size={16} className="text-red-500" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full bg-gray-600" />
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Input
+                  type="password"
+                  value={localKeys[provider.id] || ''}
+                  onChange={e => setLocalKeys(prev => ({ ...prev, [provider.id]: e.target.value }))}
+                  placeholder={`Enter ${provider.name} key`}
+                  className="bg-gray-900 border-gray-700 focus:ring-[#6366F1] text-white"
+                />
+              </div>
 
-                <div className="flex flex-col gap-2">
-                  <Button
-                    onClick={() => testConnection(provider.id)}
-                    disabled={testing[provider.id]}
-                    variant="outline"
-                    className="w-full border-gray-600 text-gray-300 hover:bg-gray-700"
-                  >
-                    {testing[provider.id] ? <Loader2 className="animate-spin mr-2" size={16} /> : <Zap className="mr-2" size={16} />}
-                    Test Connection
-                  </Button>
-                  {providerData?.detectedModel && (
-                    <p className="text-xs text-gray-500 text-center italic">
-                      Default model: <span className="text-gray-300 font-mono">{providerData.detectedModel}</span>
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={() => testConnection(provider.id, provider.name)}
+                  disabled={testing[provider.id]}
+                  variant="outline"
+                  className="w-full border-gray-600 text-gray-300 hover:bg-gray-700"
+                >
+                  {testing[provider.id] ? <Loader2 className="animate-spin mr-2" size={16} /> : <Zap className="mr-2" size={16} />}
+                  Test Connection
+                </Button>
+                {provider.detectedModel && (
+                  <p className="text-xs text-gray-500 text-center italic">
+                    Default model: <span className="text-gray-300 font-mono">{provider.detectedModel}</span>
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        {providers.length === 0 && (
+          <div className="col-span-full text-center py-12 text-gray-500 border-2 border-dashed border-gray-800 rounded-3xl">
+            No providers configured. Please add them in the Providers tab first.
+          </div>
+        )}
       </div>
 
-      <div className="mt-10 flex justify-end">
-        <Button
-          onClick={saveKeys}
-          disabled={isSaving}
-          className="bg-[#6366F1] hover:bg-[#4f46e5] text-white px-8 py-6 rounded-full font-bold transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-        >
-          {isSaving ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Saving…
-            </>
-          ) : (
-            <>
-              <Save size={20} />
-              Save All Keys
-            </>
-          )}
-        </Button>
-      </div>
+      {Object.keys(localKeys).length > 0 && (
+        <div className="mt-10 flex justify-end">
+          <Button
+            onClick={saveKeys}
+            disabled={isSaving}
+            className="bg-[#6366F1] hover:bg-[#4f46e5] text-white px-8 py-6 rounded-full font-bold transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+          >
+            {isSaving ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Saving…
+              </>
+            ) : (
+              <>
+                <Save size={20} />
+                Save All Keys
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
