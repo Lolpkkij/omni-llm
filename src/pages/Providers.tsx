@@ -24,7 +24,8 @@ import { toast } from 'sonner';
 import CryptoJS from 'crypto-js';
 import { useProviderStore, type Provider } from '@/store/useProviderStore';
 
-const SALT = process.env.NEXT_PUBLIC_ENCRYPTION_SALT || "default-salt";
+// Use Vite's import.meta.env for client‑side env variables
+const SALT = import.meta.env.VITE_ENCRYPTION_SALT || "default-salt";
 
 const ProviderCard = ({ 
   provider, 
@@ -75,9 +76,14 @@ const ProviderCard = ({
       const testUrl = `${form.baseUrl.replace(/\/+$/, "")}/models`;
       const headers: Record<string, string> = {};
       
-      if (form.encryptedKeys.length > 0) {
+      if (form.encryptedKeys?.length) {
         const key = CryptoJS.AES.decrypt(form.encryptedKeys[0], SALT).toString(CryptoJS.enc.Utf8);
         if (form.auth.type === 'header') headers[form.auth.keyName] = `${form.auth.prefix || ''}${key}`;
+        else if (form.auth.type === 'query') {
+          const param = encodeURIComponent(`${form.auth.prefix || ''}${key}`);
+          const sep = testUrl.includes("?") ? "&" : "?";
+          testUrl += `${sep}${form.auth.keyName}=${param}`;
+        }
       }
 
       const res = await fetch(testUrl, { method: 'GET', headers });
@@ -212,7 +218,7 @@ const ProviderCard = ({
                 <Button size="sm" onClick={addKey} className="h-8 px-3">Add</Button>
               </div>
               <div className="space-y-2 mt-2">
-                {form.encryptedKeys.map((enc, i) => (
+                {form.encryptedKeys?.map((enc, i) => (
                   <div key={i} className="flex items-center gap-2 bg-gray-900/50 p-2 rounded-lg border border-gray-700">
                     <span className="flex-1 font-mono text-xs truncate">
                       {CryptoJS.AES.decrypt(enc, SALT).toString(CryptoJS.enc.Utf8).substring(0, 8)}...
