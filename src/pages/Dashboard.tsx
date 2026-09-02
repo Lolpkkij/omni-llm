@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState } from 'react';
 import { 
   Copy, 
@@ -73,7 +71,7 @@ const Dashboard = () => {
           if (!res.ok) throw new Error();
           const usage = await res.json();
           return { id: p.id, usage };
-        } catch (e) {
+        } catch {
           return { id: p.id, usage: null };
         }
       }));
@@ -83,7 +81,7 @@ const Dashboard = () => {
       });
 
       toast.success("Usage data updated across all providers");
-    } catch (e) {
+    } catch {
       toast.error("Failed to refresh some usage data");
     } finally {
       setRefreshing(false);
@@ -200,6 +198,21 @@ const Dashboard = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
+                  {/* Enable / Disable Toggle */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateProvider(p.id, { enabled: !p.enabled });
+                    }}
+                    className={`${
+                      p.enabled ? "text-green-400" : "text-red-400"
+                    }`}
+                  >
+                    {p.enabled ? "Disable" : "Enable"}
+                  </Button>
+
                   <Button 
                     variant="ghost" 
                     size="sm" 

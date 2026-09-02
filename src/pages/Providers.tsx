@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import CryptoJS from 'crypto-js';
 import { useProviderStore, type Provider } from '@/store/useProviderStore';
 import ProviderModal from '@/components/ProviderModal';
+import ConfirmModal from '@/components/ConfirmModal';
 
 const SALT = import.meta.env.VITE_ENCRYPTION_SALT;
 
@@ -47,6 +48,7 @@ const ProviderCard = ({
   const [form, setForm] = useState({ ...provider });
   const [newKey, setNewKey] = useState('');
   const [visibleKeys, setVisibleKeys] = useState<Record<number, boolean>>({});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleSave = () => {
     onSave(provider.id, form);
@@ -109,7 +111,7 @@ const ProviderCard = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onDelete(provider.id)}
+            onClick={() => setShowDeleteConfirm(true)}
             className="text-gray-400 hover:text-red-400"
           >
             <Trash2 size={16} />
@@ -123,6 +125,17 @@ const ProviderCard = ({
             <div className="flex items-center gap-2">
               <Globe size={14} />
               <span className="truncate">{provider.baseUrl}</span>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="text-gray-400 hover:text-white"
+                onClick={() => {
+                  navigator.clipboard.writeText(provider.baseUrl);
+                  toast.success('Base URL copied!');
+                }}
+              >
+                <Copy size={14} />
+              </Button>
             </div>
             <div className="flex items-center gap-2">
               <KeyIcon size={14} />
@@ -304,7 +317,7 @@ const ProviderCard = ({
             {/* Actions */}
             <div className="flex gap-2 pt-2">
               <Button
-                variant="outline"
+                variant="ghost"
                 disabled={testing}
                 onClick={testConnection}
                 className="flex-1 h-9 border-gray-600 text-sm"
@@ -312,7 +325,10 @@ const ProviderCard = ({
                 {testing ? <Loader2 className="animate-spin mr-2" size={14} /> : null}
                 Test Connection
               </Button>
-              <Button onClick={handleSave} className="flex-1 h-9 bg-[#6366F1] hover:bg-[#4f46e5] text-sm">
+              <Button
+                onClick={handleSave}
+                className="flex-1 h-9 bg-[#6366F1] hover:bg-[#4f46e5] text-sm"
+              >
                 <Save size={14} className="mr-2" />
                 Save
               </Button>
@@ -320,6 +336,17 @@ const ProviderCard = ({
           </div>
         )}
       </CardContent>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        open={showDeleteConfirm}
+        title="Delete Provider?"
+        description={`This will permanently delete “${provider.name}”. This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={() => onDelete(provider.id)}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </Card>
   );
 };
@@ -327,9 +354,10 @@ const ProviderCard = ({
 export default function Providers() {
   const { providers, loadProviders, updateProvider, deleteProvider } = useProviderStore();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadProviders();
+    loadProviders().finally(() => setLoading(false));
   }, []);
 
   const scrollToBottom = () => {
@@ -338,6 +366,13 @@ export default function Providers() {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8 animate-fadeIn relative">
+      {/* Global Loading Overlay */}
+      {loading && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+          <Loader2 className="animate-spin text-[#6366F1]" size={48} />
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold text-white">Provider Management</h1>
