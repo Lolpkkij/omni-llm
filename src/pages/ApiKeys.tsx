@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { useProviderStore } from '@/store/useProviderStore';
-import CryptoJS from 'crypto-js';
 
 const providersList = [
   { id: 'openai', name: 'OpenAI', defaultUrl: 'https://api.openai.com/v1' },

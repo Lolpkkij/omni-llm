@@ -17,7 +17,7 @@ interface ProviderState {
   setUsageData: (providerId: string, usage: ProviderUsage) => void;
 }
 
-const SALT = import.meta.env.VITE_ENCRYPTION_SALT || "default-salt";
+const SALT = import.meta.env.VITE_ENCRYPTION_SALT;
 
 export const useProviderStore = create<ProviderState>((set, get) => ({
   providers: [],

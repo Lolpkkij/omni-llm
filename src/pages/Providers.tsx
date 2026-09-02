@@ -25,7 +25,7 @@ import CryptoJS from 'crypto-js';
 import { useProviderStore, type Provider } from '@/store/useProviderStore';
 import ProviderModal from '@/components/ProviderModal';
 
-const SALT = import.meta.env.VITE_ENCRYPTION_SALT || "default-salt";
+const SALT = import.meta.env.VITE_ENCRYPTION_SALT;
 
 const ProviderCard = ({ 
   provider, 
