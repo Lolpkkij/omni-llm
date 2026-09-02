@@ -72,22 +72,38 @@ const ProviderCard = ({
     setTesting(true);
     setTestStatus('idle');
     try {
-      // Simple probe: try to hit /models or the baseUrl
-      const testUrl = `${form.baseUrl.replace(/\/+$/, "")}/models`;
-      const headers: Record<string, string> = {};
+      const testUrl = new URL(form.baseUrl);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
       
-      if (form.encryptedKeys?.length) {
-        const key = CryptoJS.AES.decrypt(form.encryptedKeys[0], SALT).toString(CryptoJS.enc.Utf8);
-        if (form.auth.type === 'header') headers[form.auth.keyName] = `${form.auth.prefix || ''}${key}`;
-        else if (form.auth.type === 'query') {
-          const param = encodeURIComponent(`${form.auth.prefix || ''}${key}`);
-          const sep = testUrl.includes("?") ? "&" : "?";
-          testUrl += `${sep}${form.auth.keyName}=${param}`;
-        }
+      const sampleKey = form.encryptedKeys?.[0];
+      if (!sampleKey) {
+        setTestStatus('error');
+        throw new Error("No API key provided");
       }
 
-      const res = await fetch(testUrl, { method: 'GET', headers });
-      if (res.ok) setTestStatus('success');
+      const apiKey = CryptoJS.AES.decrypt(sampleKey, SALT).toString(CryptoJS.enc.Utf8);
+      
+      if (form.auth.type === 'header') {
+        headers[form.auth.keyName] = `${form.auth.prefix ?? ""}${apiKey}`;
+      } else if (form.auth.type === 'query') {
+        testUrl.searchParams.append(form.auth.keyName, `${form.auth.prefix ?? ""}${apiKey}`);
+      }
+
+      // Standard probe endpoint: /v1/models
+      const probeUrl = `${testUrl.origin}/v1/models`;
+      const res = await fetch(probeUrl, { 
+        method: 'GET', 
+        headers,
+        // If query auth was used, the fetch uses the URL with search params
+        // But we used testUrl.origin, so let's fix that to use the full testUrl if query params were added
+        ...(form.auth.type === 'query' ? { url: testUrl.toString() } : {})
+      });
+
+      // To be truly correct when using query params, we need to use the full testUrl
+      const finalUrl = form.auth.type === 'query' ? testUrl.toString() : probeUrl;
+      const finalRes = await fetch(finalUrl, { method: 'GET', headers });
+
+      if (finalRes.ok) setTestStatus('success');
       else throw new Error();
     } catch (e) {
       setTestStatus('error');

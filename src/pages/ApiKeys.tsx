@@ -34,7 +34,7 @@ const ApiKeys = () => {
         const storedKeys = await localforage.getItem<Record<string, string>>('apiKeys');
         if (storedKeys) {
           const decrypted: Record<string, string> = {};
-          const salt = process.env.NEXT_PUBLIC_ENCRYPTION_SALT || '';
+          const salt = import.meta.env.VITE_ENCRYPTION_SALT || '';
           providersList.forEach(p => {
             const enc = storedKeys[p.id];
             if (enc) {
@@ -66,33 +66,37 @@ const ApiKeys = () => {
 
     try {
       const pInfo = providersList.find(p => p.id === providerId);
-      let url = `${pInfo?.defaultUrl}/models`;
-      let headers: Record<string, string> = {};
+      if (!pInfo) throw new Error('Provider info not found');
 
+      const testUrl = new URL(pInfo.defaultUrl);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      
+      // For testing logic, we treat the provided key as the plain key
       if (providerId === 'google') {
-        url = `${pInfo?.defaultUrl}/v1beta/models?key=${key}`;
+        testUrl.searchParams.append('key', key);
       } else {
         headers['Authorization'] = `Bearer ${key}`;
       }
 
-      const res = await fetch(url, { headers });
+      // Standard probe endpoint
+      const probeUrl = `${testUrl.origin}/v1/models`;
+      const finalUrl = testUrl.searchParams.toString() ? testUrl.toString() : probeUrl;
+
+      const res = await fetch(finalUrl, { headers });
       if (!res.ok) throw new Error('Connection failed');
       
       const data = await res.json();
       let firstModel = 'Unknown';
       
-      // Extract first model based on common API shapes
       if (Array.isArray(data.data)) firstModel = data.data[0]?.id || 'Unknown';
       else if (Array.isArray(data.models)) firstModel = data.models[0]?.name || 'Unknown';
       else if (Array.isArray(data)) firstModel = data[0]?.id || 'Unknown';
 
       setStatus(prev => ({ ...prev, [providerId]: 'success' }));
       
-      // Update Provider Store with detection
-      const existing = providers.find(p => p.id === providerId);
       updateProvider(providerId, {
         detectedModel: firstModel,
-        providerType: providerId === 'google' ? 'gemini' : 'openai', // Simplified detection
+        providerType: providerId === 'google' ? 'gemini' : 'openai',
         enabled: true,
       });
 
@@ -122,7 +126,7 @@ const ApiKeys = () => {
   const saveKeys = async () => {
     setIsSaving(true);
     try {
-      const salt = process.env.NEXT_PUBLIC_ENCRYPTION_SALT || '';
+      const salt = import.meta.env.VITE_ENCRYPTION_SALT || '';
       const encrypted: Record<string, string> = {};
       providersList.forEach(p => {
         const plain = localKeys[p.id];
