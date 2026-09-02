@@ -3,9 +3,11 @@ import { Send, Bot, Trash2 } from 'lucide-react';
 import { useChatStore } from '@/store/useChatStore';
 import MessageBubble from '@/components/MessageBubble';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { encryptKey } from '@/lib/encryption';
 
 const Chat = () => {
-  const { selectedModel, messages, setSelectedModel, addUserMessage, addAssistantMessage, clearChat } = useChatStore();
+  const { selectedModel, messages, setSelectedModel, addUserMessage, addAssistantMessage, clearChat, apiKeys, selectedProvider } = useChatStore();
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -24,18 +26,50 @@ const Chat = () => {
     addUserMessage(userText);
     setIsTyping(true);
 
-    // Simulate streaming
-    const responseText = `Hello! I am your ${selectedModel} assistant. I've received your message: "${userText}". How else can I help you today?`;
-    let currentText = "";
-    
-    addAssistantMessage(""); // Create initial bubble
+    try {
+      // Find the key for the selected provider
+      const apiKey = apiKeys[selectedProvider.toLowerCase()];
+      if (!apiKey) {
+        toast.error(`No API key configured for ${selectedProvider}. Please add one in the API Keys tab.`);
+        setIsTyping(false);
+        return;
+      }
 
-    for (let i = 0; i < responseText.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 30));
-      currentText += responseText[i];
-      addAssistantMessage(currentText, true);
+      const response = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: selectedProvider, // Note: This expects the provider ID
+          model: selectedModel,
+          messages: [...messages, { role: 'user', content: userText }],
+          encryptedKey: encryptKey(apiKey),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.statusMessage || 'Provider request failed');
+      }
+
+      const reader = response.body?.getReader();
+      let currentText = "";
+      addAssistantMessage(""); // Create initial bubble
+
+      while (reader) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = new TextDecoder().decode(value);
+        // The proxy returns a stream. Depending on the provider, it might be SSE or raw.
+        // For simplicity, we'll treat the chunk as text.
+        currentText += chunk;
+        addAssistantMessage(currentText, true);
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'An unexpected error occurred');
+    } finally {
+      setIsTyping(false);
     }
-    setIsTyping(false);
   };
 
   return (
@@ -63,7 +97,7 @@ const Chat = () => {
             onChange={(e) => setSelectedModel(e.target.value)}
             className="bg-gray-900 text-gray-300 text-sm rounded-lg border border-gray-700 px-3 py-2 outline-none focus:ring-2 ring-[#6366F1]/50"
           >
-            {["OpenAI", "Anthropic", "Gemini", "Groq", "Mistral", "OpenRouter"].map(m => (
+            {["gpt-4o", "claude-3-sonnet", "gemini-pro", "llama-3", "mistral-large", "openrouter-any"].map(m => (
               <option key={m} value={m}>{m}</option>
             ))}
           </select>
@@ -84,7 +118,7 @@ const Chat = () => {
         {isTyping && (
           <div className="flex justify-start mb-4 animate-pulse">
             <div className="bg-gray-800 text-gray-400 rounded-2xl px-4 py-2 rounded-tl-none text-sm border border-gray-700">
-              {selectedModel} is thinking...
+              AI is thinking...
             </div>
           </div>
         )}
