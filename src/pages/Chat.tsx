@@ -1,18 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, Trash2, RotateCcw } from 'lucide-react';
+import { Send, Bot, Trash2, RotateCcw, Sparkles, Zap, Lock } from 'lucide-react';
 import { useChatStore } from '@/store/useChatStore';
 import MessageBubble from '@/components/MessageBubble';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { encryptKey } from '@/lib/encryption';
 import { useProviderStore } from '@/store/useProviderStore';
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@/components/ui/select';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import ModelSelector from '@/components/ModelSelector';
+import SubscriptionModal from '@/components/SubscriptionModal';
+import { routeModel, AUTO_FREE, AUTO_PREMIUM } from '@/lib/modelRouter';
 import { Label } from '@/components/ui/label';
 
 const Chat = () => {
@@ -28,10 +25,14 @@ const Chat = () => {
   } = useChatStore();
 
   const { providers } = useProviderStore();
-
+  const { checkAccess } = useSubscriptionStore();
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Model selection state - now includes auto modes
+  const [modelMode, setModelMode] = useState(selectedModel || AUTO_FREE);
 
   useEffect(() => {
     if (!selectedProviderId && providers.length > 0) {
@@ -46,12 +47,17 @@ const Chat = () => {
     }
   }, [messages, isTyping]);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
-    if (!selectedProviderId) {
-      toast.error('Please select a provider before sending a message.');
+  const handleModelChange = (newModel: string) => {
+    if (newModel === AUTO_PREMIUM && !checkAccess("auto-premium")) {
+      setShowSubscriptionModal(true);
       return;
     }
+    setModelMode(newModel);
+    setSelectedModel(newModel);
+  };
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
 
     const userText = input;
     setInput('');
@@ -59,14 +65,42 @@ const Chat = () => {
     setIsTyping(true);
 
     try {
+      // Determine which model/provider to use
+      let providerId = selectedProviderId;
+      let model = modelMode;
+
+      if (modelMode === AUTO_FREE || modelMode === AUTO_PREMIUM) {
+        const routed = routeModel(
+          modelMode as "auto-free" | "auto-premium",
+          providers,
+          [...messages, { role: 'user', content: userText }]
+        );
+        
+        if (!routed) {
+          throw new Error(`No available ${modelMode === AUTO_FREE ? "free" : "premium"} models. Please configure providers.`);
+        }
+        
+        providerId = routed.provider.id;
+        model = routed.model.id;
+        
+        // Show which model was selected
+        toast.success(`Using ${routed.model.name} (${routed.provider.name})`, {
+          icon: modelMode === AUTO_FREE ? <Zap className="text-green-400" /> : <Sparkles className="text-yellow-400" />,
+        });
+      }
+
+      if (!providerId) {
+        throw new Error('Please select a provider before sending a message.');
+      }
+
       const response = await fetch('/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          provider: selectedProviderId,
-          model: selectedModel,
+          provider: providerId,
+          model: model,
           messages: [...messages, { role: 'user', content: userText }],
-          encryptedKey: encryptKey('placeholder'),
+          encryptedKey: 'placeholder', // Will be resolved server-side
         }),
       });
 
@@ -90,15 +124,15 @@ const Chat = () => {
       }
     } catch (e: any) {
       toast.error(e.message || 'An unexpected error occurred');
-      // Remove the empty assistant bubble if it failed
       if (messages[messages.length - 1]?.role === 'assistant' && messages[messages.length - 1].content === '') {
-        // We can't easily "pop" without a dedicated action, but we could add a fail message
         addAssistantMessage(`Error: ${e.message}`, true);
       }
     } finally {
       setIsTyping(false);
     }
   };
+
+  const hasAnyProvider = providers.some(p => p.enabled && p.encryptedKeys?.length);
 
   return (
     <div className="flex flex-col h-full max-w-4xl mx-auto w-full p-4 md:p-6">
@@ -119,43 +153,33 @@ const Chat = () => {
           </Button>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col">
+        <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+          {/* Provider Selector */}
+          <div className="flex flex-col w-full md:w-48">
             <Label className="text-gray-400 mb-1">Provider</Label>
-            <Select value={selectedProviderId} onValueChange={setSelectedProviderId}>
-              <SelectTrigger className="w-[200px] bg-gray-900 border-gray-700 text-white">
-                <SelectValue placeholder="Select provider" />
-              </SelectTrigger>
-              <SelectContent>
-                {providers.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name} {!p.enabled && '(disabled)'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex flex-col">
-            <Label className="text-gray-400 mb-1">Model</Label>
             <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="bg-gray-900 text-gray-300 text-sm rounded-lg border border-gray-700 px-3 py-2 outline-none focus:ring-2 ring-[#6366F1]/50"
+              value={selectedProviderId}
+              onChange={(e) => setSelectedProviderId(e.target.value)}
+              className="bg-gray-900 text-gray-300 text-sm rounded-lg border border-gray-700 px-3 py-2 outline-none focus:ring-2 ring-[#6366F1]/50 w-full"
+              disabled={!hasAnyProvider}
             >
-              {[
-                'gpt-4o',
-                'claude-3-sonnet',
-                'gemini-pro',
-                'llama-3',
-                'mistral-large',
-                'openrouter-any',
-              ].map((m) => (
-                <option key={m} value={m}>
-                  {m}
+              {providers.map((p) => (
+                <option key={p.id} value={p.id} disabled={!p.enabled || !p.encryptedKeys?.length}>
+                  {p.name} {!p.enabled && '(disabled)'} {!p.encryptedKeys?.length && '(no key)'}
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Model Selector */}
+          <div className="flex flex-col w-full md:w-64">
+            <Label className="text-gray-400 mb-1">Model</Label>
+            <ModelSelector
+              value={modelMode}
+              onChange={handleModelChange}
+              providers={providers}
+              disabled={!hasAnyProvider}
+            />
           </div>
         </div>
       </div>
@@ -164,7 +188,8 @@ const Chat = () => {
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-gray-500 space-y-4">
             <Bot size={48} className="opacity-20" />
-            <p>Start a conversation with {selectedModel}</p>
+            <p>Start a conversation</p>
+            <p className="text-sm text-gray-600">Try Auto [Free] for best free model, or upgrade for Auto [Premium]</p>
           </div>
         )}
         {messages.map((msg, i) => (
@@ -192,15 +217,22 @@ const Chat = () => {
           }}
           placeholder="Message ..."
           className="w-full bg-gray-800 text-white rounded-2xl pl-4 pr-12 py-3 outline-none border border-gray-700 focus:border-[#6366F1] transition-all resize-none"
+          disabled={!hasAnyProvider}
         />
         <button
           onClick={handleSend}
           className="absolute right-2 bottom-2 p-2 bg-[#6366F1] text-white rounded-xl hover:bg-[#4f46e5] transition-colors disabled:opacity-50"
-          disabled={!input.trim() || isTyping}
+          disabled={!input.trim() || isTyping || !hasAnyProvider}
         >
           <Send size={18} />
         </button>
       </div>
+
+      <SubscriptionModal
+        open={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+        triggerFeature="auto-premium"
+      />
     </div>
   );
 };
