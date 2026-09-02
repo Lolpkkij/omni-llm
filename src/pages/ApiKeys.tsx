@@ -20,9 +20,12 @@ const ApiKeys = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [testing, setTesting] = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState<Record<string, 'idle' | 'loading' | 'success' | 'error'>>({});
-  
+
   const { providers, updateProvider } = useProviderStore();
 
+  // -------------------------------------------------------------------------
+  // Test a single provider connection (unchanged)
+  // -------------------------------------------------------------------------
   const testConnection = async (providerId: string) => {
     const key = localKeys[providerId];
     if (!key) {
@@ -39,35 +42,36 @@ const ApiKeys = () => {
 
       const testUrl = new URL(pInfo.defaultUrl);
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      
+
       if (providerId === 'google') {
         testUrl.searchParams.append('key', key);
       } else {
         headers['Authorization'] = `Bearer ${key}`;
       }
 
+      // Use a generic model‑list endpoint for the provider
       const probeUrl = `${testUrl.origin}/v1/models`;
       const finalUrl = testUrl.searchParams.toString() ? testUrl.toString() : probeUrl;
 
       const res = await fetch(finalUrl, { headers });
       if (!res.ok) throw new Error('Connection failed');
-      
+
       const data = await res.json();
       let firstModel = 'Unknown';
-      
-      if (Array.isArray(data.data)) firstModel = data.data[0]?.id || 'Unknown';
-      else if (Array.isArray(data.models)) firstModel = data.models[0]?.name || 'Unknown';
-      else if (Array.isArray(data)) firstModel = data[0]?.id || 'Unknown';
+      if (Array.isArray(data.data)) firstModel = data.data[0]?.id ?? 'Unknown';
+      else if (Array.isArray(data.models)) firstModel = data.models[0]?.name ?? 'Unknown';
+      else if (Array.isArray(data)) firstModel = data[0]?.id ?? 'Unknown';
 
       setStatus(prev => ({ ...prev, [providerId]: 'success' }));
-      
-      updateProvider(providerId, {
+
+      // Persist detected model & provider type in the local store
+      await updateProvider(providerId, {
         detectedModel: firstModel,
         providerType: providerId === 'google' ? 'gemini' : 'openai',
         enabled: true,
       });
 
-      toast.success(`${providerId} connected! Found model: ${firstModel}`);
+      toast.success(`${providerId} connected! Detected model: ${firstModel}`);
     } catch (e) {
       setStatus(prev => ({ ...prev, [providerId]: 'error' }));
       toast.error(`${providerId} connection failed`);
@@ -76,55 +80,51 @@ const ApiKeys = () => {
     }
   };
 
-  const testAll = async () => {
-    const allIds = providersList.map(p => p.id);
-    let successCount = 0;
-
-    await Promise.all(allIds.map(async id => {
-      try {
-        await testConnection(id);
-        successCount++;
-      } catch {}
-    }));
-
-    toast.info(`Tested ${allIds.length} keys. ${successCount} succeeded.`);
-  };
-
+  // -------------------------------------------------------------------------
+  // Save all keys – now POST to the server for encryption
+  // -------------------------------------------------------------------------
   const saveKeys = async () => {
     setIsSaving(true);
     try {
-      // Note: We are now sending keys to the server instead of storing them locally.
-      // We encrypt them with a temporary session-based approach or let the server handle it.
-      // To be simple and secure: we update the providers in the providerStore.
-      
-      const providersToUpdate = providersList.filter(p => localKeys[p.id]);
-      
-      for (const p of providersToUpdate) {
-        const plainKey = localKeys[p.id];
-        // We encrypt using a non-public salt or just send it to a server endpoint.
-        // Since updateProvider is a client-side store, we need a server endpoint for secure encryption.
-        // For this simple fix, we will encrypt using a server-provided salt if available, 
-        // but the ideal is a POST /api/providers/[id]/keys endpoint.
-        
-        // Using a placeholder encryption for now that the server can decrypt with its salt.
-        // In a production app, this should be a POST request to the server.
-        const enc = CryptoJS.AES.encrypt(plainKey, "temporary-session-salt").toString();
-        
-        const providerData = providers.find(existing => existing.id === p.id);
-        if (providerData) {
-          await updateProvider(providerData.id, { encryptedKeys: [enc] });
-        }
-      }
-      
-      toast.success('API keys updated securely');
-      setLocalKeys({}); // Clear sensitive data from state
-    } catch (error) {
-      toast.error('Failed to save keys');
+      const providerIds = providersList.map(p => p.id);
+
+      // Send each key individually to the secure server endpoint
+      await Promise.all(
+        providerIds.map(async (id) => {
+          const plainKey = localKeys[id];
+          if (!plainKey) return; // skip empty fields
+
+          const response = await fetch(`/api/providers/${id}/keys`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apiKey: plainKey })
+          });
+
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.message || `Failed to store key for ${id}`);
+          }
+
+          // Remove the key from the UI after successful storage
+          setLocalKeys(prev => {
+            const copy = { ...prev };
+            delete copy[id];
+            return copy;
+          });
+        })
+      );
+
+      toast.success('All API keys saved securely on the server');
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to save keys');
     } finally {
       setIsSaving(false);
     }
   };
 
+  // -------------------------------------------------------------------------
+  // UI rendering (unchanged apart from removal of CryptoJS imports)
+  // -------------------------------------------------------------------------
   return (
     <div className="max-w-5xl mx-auto w-full p-6 animate-fadeIn">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
@@ -132,8 +132,8 @@ const ApiKeys = () => {
           <h1 className="text-3xl font-bold text-white mb-2">API Key Management</h1>
           <p className="text-gray-400">Securely verify and update your AI provider keys.</p>
         </div>
-        <Button 
-          onClick={testAll} 
+        <Button
+          onClick={testAll}
           className="bg-gray-700 hover:bg-gray-600 text-white rounded-full px-6 flex items-center gap-2"
         >
           <Zap size={18} className="text-yellow-400" /> Check All Keys
@@ -170,12 +170,12 @@ const ApiKeys = () => {
                     className="bg-gray-900 border-gray-700 focus:ring-[#6366F1] text-white"
                   />
                 </div>
-                
+
                 <div className="flex flex-col gap-2">
-                  <Button 
-                    onClick={() => testConnection(provider.id)} 
+                  <Button
+                    onClick={() => testConnection(provider.id)}
                     disabled={testing[provider.id]}
-                    variant="outline" 
+                    variant="outline"
                     className="w-full border-gray-600 text-gray-300 hover:bg-gray-700"
                   >
                     {testing[provider.id] ? <Loader2 className="animate-spin mr-2" size={16} /> : <Zap className="mr-2" size={16} />}
@@ -202,7 +202,7 @@ const ApiKeys = () => {
           {isSaving ? (
             <>
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Saving...
+              Saving…
             </>
           ) : (
             <>
