@@ -29,20 +29,40 @@ export default function Providers() {
   const [editing, setEditing] = useState<Provider | null>(null);
   const [showForm, setShowForm] = useState(false);
 
+  // -------------------------------------------------------------------------
+  // Load providers – always store an array
+  // -------------------------------------------------------------------------
   const loadProviders = async () => {
     try {
       const res = await fetch("/api/providers");
       const data = await res.json();
-      setProviders(data);
+
+      // Server may return either an array or an object like { providers: [...] }
+      const list = Array.isArray(data)
+        ? data
+        : Array.isArray((data as any).providers)
+        ? (data as any).providers
+        : [];
+
+      setProviders(list);
     } catch (e) {
+      console.error(e);
       toast.error("Failed to load providers");
+      setProviders([]); // fallback to empty array
     }
   };
 
+  // -------------------------------------------------------------------------
+  // Lifecycle
+  // -------------------------------------------------------------------------
   useEffect(() => {
     loadProviders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // -------------------------------------------------------------------------
+  // CRUD helpers
+  // -------------------------------------------------------------------------
   const handleCreate = async (payload: any) => {
     try {
       const res = await fetch("/api/providers", {
@@ -87,6 +107,9 @@ export default function Providers() {
     }
   };
 
+  // -------------------------------------------------------------------------
+  // UI
+  // -------------------------------------------------------------------------
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
