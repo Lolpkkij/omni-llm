@@ -23,9 +23,9 @@ const ApiKeys = () => {
 
   const { providers, updateProvider } = useProviderStore();
 
-  // -------------------------------------------------------------------------
-  // Test a single provider connection (unchanged)
-  // -------------------------------------------------------------------------
+  /* --------------------------------------------------------------------- */
+  /* Test a single provider connection (unchanged)                         */
+  /* --------------------------------------------------------------------- */
   const testConnection = async (providerId: string) => {
     const key = localKeys[providerId];
     if (!key) {
@@ -49,7 +49,7 @@ const ApiKeys = () => {
         headers['Authorization'] = `Bearer ${key}`;
       }
 
-      // Use a generic model‑list endpoint for the provider
+      // Generic model‑list endpoint
       const probeUrl = `${testUrl.origin}/v1/models`;
       const finalUrl = testUrl.searchParams.toString() ? testUrl.toString() : probeUrl;
 
@@ -72,7 +72,7 @@ const ApiKeys = () => {
       });
 
       toast.success(`${providerId} connected! Detected model: ${firstModel}`);
-    } catch (e) {
+    } catch {
       setStatus(prev => ({ ...prev, [providerId]: 'error' }));
       toast.error(`${providerId} connection failed`);
     } finally {
@@ -80,19 +80,26 @@ const ApiKeys = () => {
     }
   };
 
-  // -------------------------------------------------------------------------
-  // Save all keys – now POST to the server for encryption
-  // -------------------------------------------------------------------------
+  /* --------------------------------------------------------------------- */
+  /* Test **all** providers at once                                         */
+  /* --------------------------------------------------------------------- */
+  const testAll = async () => {
+    const promises = providersList.map(p => testConnection(p.id));
+    await Promise.all(promises);
+  };
+
+  /* --------------------------------------------------------------------- */
+  /* Save all keys – POST to server for encryption                         */
+  /* --------------------------------------------------------------------- */
   const saveKeys = async () => {
     setIsSaving(true);
     try {
       const providerIds = providersList.map(p => p.id);
 
-      // Send each key individually to the secure server endpoint
       await Promise.all(
         providerIds.map(async (id) => {
           const plainKey = localKeys[id];
-          if (!plainKey) return; // skip empty fields
+          if (!plainKey) return;
 
           const response = await fetch(`/api/providers/${id}/keys`, {
             method: 'POST',
@@ -105,7 +112,7 @@ const ApiKeys = () => {
             throw new Error(err.message || `Failed to store key for ${id}`);
           }
 
-          // Remove the key from the UI after successful storage
+          // Remove saved key from UI
           setLocalKeys(prev => {
             const copy = { ...prev };
             delete copy[id];
@@ -122,9 +129,6 @@ const ApiKeys = () => {
     }
   };
 
-  // -------------------------------------------------------------------------
-  // UI rendering (unchanged apart from removal of CryptoJS imports)
-  // -------------------------------------------------------------------------
   return (
     <div className="max-w-5xl mx-auto w-full p-6 animate-fadeIn">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">

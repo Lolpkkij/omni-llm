@@ -1,10 +1,10 @@
 import { defineHandler } from "nitro";
 import { readBody, getRouterParam, createError } from "nitro/h3";
 import CryptoJS from "crypto-js";
-import { getAllProviders, updateProvider } from "../utils/providerStore";
+import { getAllProviders, updateProvider } from "../../utils/providerStore";
 
 export default defineHandler(async (event) => {
-  const providerId = getRouterParam(event, "id");
+  const { id: providerId } = getRouterParam(event);
   if (!providerId) {
     throw createError({ statusCode: 400, statusMessage: "Provider ID is required" });
   }
@@ -16,12 +16,9 @@ export default defineHandler(async (event) => {
 
   const config = useRuntimeConfig();
   const salt = (config as any).NITRO_ENCRYPTION_SALT;
-  
+
   if (!salt) {
-    throw createError({ 
-      statusCode: 500, 
-      statusMessage: "Server encryption salt is not configured" 
-    });
+    throw createError({ statusCode: 500, statusMessage: "Server encryption salt is not configured" });
   }
 
   try {
@@ -31,18 +28,18 @@ export default defineHandler(async (event) => {
       throw createError({ statusCode: 404, statusMessage: "Provider not found" });
     }
 
-    // Encrypt the key using the server-side salt
+    // Encrypt the key using the server‑side salt
     const encryptedKey = CryptoJS.AES.encrypt(body.apiKey, salt).toString();
-    
+
     // Append the new encrypted key to the provider's list
     const updatedKeys = [...(provider.encryptedKeys || []), encryptedKey];
     await updateProvider(providerId, { encryptedKeys: updatedKeys });
 
     return { ok: true, message: "API key stored securely" };
   } catch (e: any) {
-    throw createError({ 
-      statusCode: e.statusCode || 500, 
-      statusMessage: e.statusMessage || "Failed to store API key" 
+    throw createError({
+      statusCode: e.statusCode || 500,
+      statusMessage: e.statusMessage || "Failed to store API key",
     });
   }
 });
