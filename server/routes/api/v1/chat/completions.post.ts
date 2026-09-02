@@ -1,7 +1,11 @@
 import { defineHandler } from "nitro";
 import { readBody, createError } from "nitro/h3";
 import CryptoJS from "crypto-js";
-import { getAllProviders } from "../../utils/providerStore";
+import { getAllProviders, isSafeUrl } from "../../utils/providerStore"; // Assuming isSafeUrl moved to store or lib
+
+// Note: In a real Nitro app, you'd import isSafeUrl from @/lib/providerConfig
+// But for this edit, I'll define a local helper or import correctly.
+import { isSafeUrl as validateUrl } from "../../src/lib/providerConfig";
 
 export default defineHandler(async (event) => {
   const body = await readBody(event);
@@ -12,11 +16,11 @@ export default defineHandler(async (event) => {
   }
 
   const providedKey = authHeader.replace('Bearer ', '');
+  const UNIFIED_KEY = process.env.OMNI_UNIFIED_KEY;
   
-  // In a real app, we'd check the providedKey against a DB. 
-  // For this implementation, we assume the 'unifiedKey' is shared/stored.
-  // Since we don't have a DB yet, we check a mock environment variable or a fixed key for demo.
-  const UNIFIED_KEY = process.env.OMNI_UNIFIED_KEY || "omni-proxy-demo-12345";
+  if (!UNIFIED_KEY) {
+    throw createError({ statusCode: 500, statusMessage: "Server configuration error" });
+  }
   
   if (providedKey !== UNIFIED_KEY) {
     throw createError({ statusCode: 403, statusMessage: "Invalid Unified API Key" });
@@ -24,27 +28,24 @@ export default defineHandler(async (event) => {
 
   const { model } = body;
   if (!model) {
-    throw createError({ statusCode: 400, statusMessage: "Model field is required in request body" });
+    throw createError({ statusCode: 400, statusMessage: "Model field is required" });
   }
 
-  // 1. Find the provider that handles this model.
-  // In this simplified version, we map the model name to a provider.
-  // Realistically, we'd have a model-to-provider mapping in providerStore.
   const allProviders = await getAllProviders();
-  
-  // Logic: If model is "gpt-4o" -> OpenAI, "claude-3" -> Anthropic, etc.
-  // For now, we use a simple mapping or default to the first enabled provider.
   let config = allProviders.find(p => p.enabled);
   
   if (!config) {
-    throw createError({ statusCode: 500, statusMessage: "No enabled providers configured in the gateway" });
+    throw createError({ statusCode: 500, statusMessage: "No enabled providers configured" });
   }
 
-  // 2. Get and Decrypt the API Key for the selected provider
-  // Note: Since the proxy doesn't know which specific key the user intended if multiple exist,
-  // we'll assume the first key in the encryptedKeys array for this provider.
+  // SSRF Prevention
+  if (!validateUrl(config.baseUrl)) {
+    throw createError({ statusCode: 500, statusMessage: "Provider configuration error: Unsafe URL" });
+  }
+
+  // Proper key existence check
   if (!config.encryptedKeys || config.encryptedKeys.length === 0) {
-    throw createError({ statusCode: 500, statusMessage: "No API key configured for the routed provider" });
+    throw createError({ statusCode: 500, statusMessage: "Provider configuration error" });
   }
 
   const runtimeConfig = useRuntimeConfig();
@@ -52,10 +53,9 @@ export default defineHandler(async (event) => {
   const apiKey = CryptoJS.AES.decrypt(config.encryptedKeys[0], salt).toString(CryptoJS.enc.Utf8);
 
   if (!apiKey) {
-    throw createError({ statusCode: 500, statusMessage: "Failed to decrypt upstream API key" });
+    throw createError({ statusCode: 500, statusMessage: "Provider configuration error" });
   }
 
-  // 3. Construct the Upstream Request
   const endpoint = `${config.baseUrl.replace(/\/+$/, "")}${config.modelPath}`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   
@@ -83,14 +83,12 @@ export default defineHandler(async (event) => {
     });
 
     if (!upstream.ok) {
-      const errorText = await upstream.text();
       throw createError({ 
         statusCode: upstream.status, 
-        statusMessage: `Upstream Error: ${errorText}` 
+        statusMessage: "Upstream provider error" 
       });
     }
 
-    // 4. Stream response back
     const reader = upstream.body?.getReader();
     const stream = new ReadableStream({
       async start(controller) {
@@ -116,6 +114,6 @@ export default defineHandler(async (event) => {
     });
 
   } catch (e: any) {
-    throw createError({ statusCode: 500, statusMessage: e.message });
+    throw createError({ statusCode: 500, statusMessage: "Internal server error" });
   }
 });

@@ -9,12 +9,14 @@ export function withAuth(handler: (event: any) => any) {
   return defineEventHandler(async (event) => {
     const provided = getHeader(event, "x-unified-key");
     const expected = process.env.OMNI_UNIFIED_KEY;
+    
     if (!expected) {
       throw createError({
         statusCode: 500,
         statusMessage: "Server misconfiguration: OMNI_UNIFIED_KEY not set",
       });
     }
+    
     if (!provided || provided !== expected) {
       throw createError({
         statusCode: 401,

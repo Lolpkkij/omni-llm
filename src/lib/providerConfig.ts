@@ -14,7 +14,9 @@ export type ProviderUsage = z.infer<typeof ProviderUsageSchema>;
 export const ProviderSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1),
-  baseUrl: z.string().url(),
+  baseUrl: z.string().url().refine((val) => val.startsWith("https://"), {
+    message: "Base URL must use HTTPS for security",
+  }),
   auth: z.object({
     type: z.enum(["header", "query", "body"]),
     keyName: z.string().min(1),
@@ -29,3 +31,31 @@ export const ProviderSchema = z.object({
 });
 
 export type Provider = z.infer<typeof ProviderSchema>;
+
+/**
+ * Validates that a URL does not point to local or private network addresses to prevent SSRF.
+ */
+export function isSafeUrl(urlStr: string): boolean {
+  try {
+    const url = new URL(urlStr);
+    if (url.protocol !== "https:") return false;
+    
+    const hostname = url.hostname;
+    // Block localhost, loopback, and private IP ranges
+    const forbiddenPatterns = [
+      "localhost",
+      "127.0.0.1",
+      "0.0.0.0",
+      /^10\./,
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+      /^192\.168\./,
+      /^169\.254\./,
+    ];
+
+    return !forbiddenPatterns.some(pattern => 
+      typeof pattern === "string" ? hostname === pattern : pattern.test(hostname)
+    );
+  } catch {
+    return false;
+  }
+}
