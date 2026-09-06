@@ -14,6 +14,7 @@ import Providers from "./pages/Providers";
 import Playground from "./pages/Playground";
 import PromptLibrary from "./pages/PromptLibrary";
 import DeveloperGateway from "./pages/DeveloperGateway";
+import Analytics from "./pages/Analytics";
 import Sidebar from "./components/Sidebar";
 import { useUnifiedKeyStore } from "@/store/useUnifiedKeyStore";
 
@@ -42,6 +43,7 @@ const App = () => {
                 <Route path="/prompts" element={<PromptLibrary />} />
                 <Route path="/api-keys" element={<ApiKeys />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/analytics" element={<Analytics />} />
                 <Route path="/providers" element={<Providers />} />
                 <Route path="/developer" element={<DeveloperGateway />} />
                 <Route path="/local-hub" element={<LocalHub />} />

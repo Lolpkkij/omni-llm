@@ -2,6 +2,7 @@ import { Provider } from "@/lib/providerConfig";
 
 export const AUTO_FREE = "auto-free";
 export const AUTO_PREMIUM = "auto-premium";
+export const AUTO_CHEAPEST = "auto-cheapest";
 
 // Model capability definitions
 export interface ModelCapability {
@@ -211,9 +212,24 @@ export function selectBestPremiumModel(providers: Provider[], messages: { role: 
   return scored[0]?.model || null;
 }
 
+// Select cheapest model regardless of "premium" if it meets the requirements
+export function selectCheapestModel(providers: Provider[], messages: { role: string; content: string }[]): ModelCapability | null {
+  const availableModels = getAvailableModels(providers);
+  if (availableModels.length === 0) return null;
+
+  // Prefer free, then sort by cost
+  const sorted = availableModels.sort((a, b) => {
+    if (a.isFree && !b.isFree) return -1;
+    if (!a.isFree && b.isFree) return 1;
+    return (a.costPer1kTokens || 0) - (b.costPer1kTokens || 0);
+  });
+
+  return sorted[0];
+}
+
 // Main router function
 export function routeModel(
-  mode: "auto-free" | "auto-premium" | "manual",
+  mode: "auto-free" | "auto-premium" | "auto-cheapest" | "manual",
   providers: Provider[],
   messages: { role: string; content: string }[],
   manualModel?: string
@@ -225,6 +241,8 @@ export function routeModel(
     selectedModel = selectBestFreeModel(providers, messages);
   } else if (mode === "auto-premium") {
     selectedModel = selectBestPremiumModel(providers, messages);
+  } else if (mode === "auto-cheapest") {
+    selectedModel = selectCheapestModel(providers, messages);
   } else if (mode === "manual" && manualModel) {
     selectedModel = MODEL_CATALOG.find(m => m.id === manualModel) || null;
   }

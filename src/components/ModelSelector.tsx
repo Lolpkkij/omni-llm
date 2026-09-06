@@ -11,9 +11,9 @@ import {
   SelectLabel,
   SelectSeparator 
 } from "@/components/ui/select";
-import { Sparkles, Lock, Zap, CheckCircle2, Copy } from "lucide-react";
+import { Sparkles, Lock, Zap, CheckCircle2, DollarSign } from "lucide-react";
 import { useSubscriptionStore } from "@/store/useSubscriptionStore";
-import { MODEL_CATALOG } from "@/lib/modelRouter";
+import { MODEL_CATALOG, AUTO_FREE, AUTO_PREMIUM, AUTO_CHEAPEST } from "@/lib/modelRouter";
 import { cn } from "@/lib/utils";
 
 type ModelSelectorProps = {
@@ -22,9 +22,6 @@ type ModelSelectorProps = {
   providers: any[];
   disabled?: boolean;
 };
-
-const AUTO_FREE = "auto-free";
-const AUTO_PREMIUM = "auto-premium";
 
 export default function ModelSelector({ value, onChange, providers, disabled }: ModelSelectorProps) {
   const { checkAccess } = useSubscriptionStore();
@@ -51,6 +48,13 @@ export default function ModelSelector({ value, onChange, providers, disabled }: 
               <span>Auto [Free]</span>
             </div>
             <span className="text-xs text-green-400 font-medium">FREE</span>
+          </SelectItem>
+          <SelectItem value={AUTO_CHEAPEST} className="relative flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-emerald-400" />
+              <span>Auto [Cheapest]</span>
+            </div>
+            <span className="text-xs text-emerald-400 font-medium">SMART</span>
           </SelectItem>
           <SelectItem 
             value={AUTO_PREMIUM} 
@@ -98,17 +102,6 @@ export default function ModelSelector({ value, onChange, providers, disabled }: 
               );
             })}
           </>
-        )}
-
-        {/* No providers placeholder */}
-        {availableModels.length === 0 && !hasAnyProvider && (
-          <SelectItem
-            value="none"
-            disabled
-            className="text-center text-gray-500 py-4"
-          >
-            No providers configured. Add API keys in Providers tab.
-          </SelectItem>
         )}
       </SelectContent>
     </Select>

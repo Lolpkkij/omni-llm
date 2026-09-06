@@ -13,12 +13,14 @@ import {
   Box,
   ChevronRight,
   LayoutGrid,
-  FileText
+  FileText,
+  BarChart3
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/chat", label: "Chat Studio", icon: MessageSquare },
   { href: "/playground", label: "Playground", icon: LayoutGrid },
   { href: "/prompts", label: "Prompt Library", icon: FileText },
