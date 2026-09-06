@@ -1,6 +1,6 @@
 import { defineHandler } from "nitro";
 import { readBody, createError } from "nitro/h3";
-import { addProvider } from "../../../utils/providerStore";
+import { addProvider } from "../../utils/providerStore";
 
 export default defineHandler(async (event) => {
   const payload = await readBody(event);

@@ -1,6 +1,6 @@
 import { defineHandler } from "nitro";
 import { readBody, createError } from "nitro/h3";
-import { LOCAL_MODELS } from "../../src/lib/localModels";
+import { LOCAL_MODELS } from "../../../src/lib/localModels";
 
 export default defineHandler(async (event) => {
   const body = await readBody(event);

@@ -1,6 +1,6 @@
 import { defineHandler } from "nitro";
 import { getRouterParam, createError } from "nitro/h3";
-import { deleteProvider } from "../../../utils/providerStore";
+import { deleteProvider } from "../../utils/providerStore";
 
 export default defineHandler(async (event) => {
   const { id } = getRouterParam(event);

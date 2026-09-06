@@ -1,7 +1,7 @@
 import { defineHandler } from "nitro";
 import { readBody, createError } from "nitro/h3";
 import CryptoJS from "crypto-js";
-import { getAllProviders } from "../utils/providerStore";
+import { getAllProviders } from "../../utils/providerStore";
 
 export default defineHandler(async (event) => {
   const { providerId, encryptedKey } = await readBody<{
