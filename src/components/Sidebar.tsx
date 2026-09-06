@@ -12,7 +12,8 @@ import {
   Code2, 
   Box,
   ChevronRight,
-  LayoutGrid
+  LayoutGrid,
+  FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/chat", label: "Chat Studio", icon: MessageSquare },
   { href: "/playground", label: "Playground", icon: LayoutGrid },
+  { href: "/prompts", label: "Prompt Library", icon: FileText },
   { href: "/api-keys", label: "Secret Keys", icon: Key },
   { href: "/providers", label: "AI Providers", icon: Server },
   { href: "/local-hub", label: "Local Models", icon: Box },

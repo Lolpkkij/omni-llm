@@ -12,6 +12,7 @@ import LocalHub from "./pages/LocalHub";
 import Dashboard from "./pages/Dashboard";
 import Providers from "./pages/Providers";
 import Playground from "./pages/Playground";
+import PromptLibrary from "./pages/PromptLibrary";
 import DeveloperGateway from "./pages/DeveloperGateway";
 import Sidebar from "./components/Sidebar";
 import { useUnifiedKeyStore } from "@/store/useUnifiedKeyStore";
@@ -38,6 +39,7 @@ const App = () => {
                 <Route path="/" element={<Index />} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/playground" element={<Playground />} />
+                <Route path="/prompts" element={<PromptLibrary />} />
                 <Route path="/api-keys" element={<ApiKeys />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/providers" element={<Providers />} />

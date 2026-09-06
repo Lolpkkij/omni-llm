@@ -15,7 +15,10 @@ import {
   BarChart3,
   Clock,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  Download,
+  Upload,
+  History
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,19 +26,23 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useProviderStore } from '@/store/useProviderStore';
 import { useUnifiedKeyStore } from '@/store/useUnifiedKeyStore';
+import { useSessionStore } from '@/store/useSessionStore';
+import { usePromptStore } from '@/store/usePromptStore';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const Dashboard = () => {
   const { providers, checkAllHealth, isCheckingHealth, load } = useProviderStore();
   const { unifiedKey, loadKey } = useUnifiedKeyStore();
+  const { sessions } = useSessionStore();
+  const { templates } = usePromptStore();
+  
   const [refreshing, setRefreshing] = useState(false);
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
 
   useEffect(() => {
     load();
     loadKey();
-    // Initial health check on mount
     checkAllHealth();
   }, []);
 
@@ -51,11 +58,28 @@ const Dashboard = () => {
     toast.success("System health and metrics refreshed");
   };
 
+  const exportData = () => {
+    const data = {
+      version: "1.0.0",
+      timestamp: Date.now(),
+      providers,
+      sessions,
+      templates,
+      unifiedKey
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `omnillm-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    toast.success("Backup downloaded successfully");
+  };
+
   const totalTokens = providers.reduce((sum, p) => sum + (p.usage?.tokensThisMonth || 0), 0);
   const totalSpent = providers.reduce((sum, p) => sum + (p.usage?.spentUSD || 0), 0);
   const onlineCount = providers.filter(p => p.enabled && p.health?.status === 'online').length;
 
-  // Prepare chart data
   const chartData = providers
     .filter(p => p.enabled && p.usage)
     .map(p => ({
@@ -71,14 +95,23 @@ const Dashboard = () => {
           <h1 className="text-4xl font-bold text-white tracking-tight">System Dashboard</h1>
           <p className="text-gray-400 mt-2">Real-time health and usage monitoring</p>
         </div>
-        <Button 
-          onClick={handleRefresh} 
-          disabled={refreshing || isCheckingHealth}
-          className="bg-white text-gray-900 hover:bg-gray-200 font-bold rounded-xl px-6 h-12 shadow-xl transition-all"
-        >
-          {refreshing || isCheckingHealth ? <Loader2 className="animate-spin mr-2" size={20} /> : <RefreshCw className="mr-2" size={20} />}
-          Pulse Check
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline"
+            onClick={exportData}
+            className="border-gray-700 text-gray-400 hover:text-white rounded-xl h-12"
+          >
+            <Download className="mr-2" size={18} /> Export Backup
+          </Button>
+          <Button 
+            onClick={handleRefresh} 
+            disabled={refreshing || isCheckingHealth}
+            className="bg-[#6366F1] text-white hover:bg-[#4f46e5] font-bold rounded-xl px-6 h-12 shadow-xl shadow-[#6366F1]/20 transition-all"
+          >
+            {refreshing || isCheckingHealth ? <Loader2 className="animate-spin mr-2" size={20} /> : <RefreshCw className="mr-2" size={20} />}
+            Pulse Check
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -100,11 +133,11 @@ const Dashboard = () => {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Monthly Tokens</p>
-                <h2 className="text-2xl font-bold font-mono">{totalTokens.toLocaleString()}</h2>
+                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Active Sessions</p>
+                <h2 className="text-2xl font-bold font-mono">{sessions.length}</h2>
               </div>
               <div className="p-3 bg-emerald-500/20 rounded-xl text-emerald-500">
-                <TrendingUp size={24} />
+                <History size={24} />
               </div>
             </div>
           </CardContent>
@@ -114,11 +147,11 @@ const Dashboard = () => {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Total Spend</p>
-                <h2 className="text-2xl font-bold font-mono">${totalSpent.toFixed(2)}</h2>
+                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Saved Templates</p>
+                <h2 className="text-2xl font-bold font-mono">{templates.length}</h2>
               </div>
               <div className="p-3 bg-amber-500/20 rounded-xl text-amber-500">
-                <CreditCard size={24} />
+                <FileText size={24} />
               </div>
             </div>
           </CardContent>

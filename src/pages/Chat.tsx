@@ -15,10 +15,12 @@ import {
   Database,
   MessageSquare,
   Edit2,
-  Check
+  Check,
+  FileText
 } from 'lucide-react';
 import { useSessionStore, ChatSession } from '@/store/useSessionStore';
 import { useLogStore } from '@/store/useLogStore';
+import { usePromptStore } from '@/store/usePromptStore';
 import MessageBubble from '@/components/MessageBubble';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -45,6 +47,7 @@ const Chat = () => {
   } = useSessionStore();
 
   const { providers } = useProviderStore();
+  const { templates } = usePromptStore();
   const { checkAccess } = useSubscriptionStore();
   const { addLog } = useLogStore();
   
@@ -82,6 +85,14 @@ const Chat = () => {
     }
   };
 
+  const applyTemplate = (templateContent: string) => {
+    if (!currentSessionId) return;
+    
+    // Inject template as a system-like first message or update instructions
+    setInput(templateContent);
+    toast.success("Template content loaded into input");
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isTyping || !currentSessionId) return;
 
@@ -116,9 +127,8 @@ const Chat = () => {
           icon: finalModel === AUTO_FREE ? <Zap size={14} className="text-green-400" /> : <Sparkles size={14} className="text-yellow-400" />
         });
       } else {
-        // Find manual provider for the model
         const availableProviders = providers.filter(p => p.enabled && p.encryptedKeys?.length);
-        const p = availableProviders[0]; // Simplified for manual selection
+        const p = availableProviders[0];
         providerId = p?.id || "";
         finalProvider = p?.name || "manual";
       }
@@ -155,11 +165,13 @@ const Chat = () => {
         const chunk = new TextDecoder().decode(value);
         currentText += chunk;
         
-        // Update the last message in current session
-        const updatedMessages = [...(useSessionStore.getState().sessions.find(s => s.id === currentSessionId)?.messages || [])];
-        if (updatedMessages.length > 0) {
-          updatedMessages[updatedMessages.length - 1].content = currentText;
-          updateSession(currentSessionId, { messages: updatedMessages });
+        const updatedSessions = [...useSessionStore.getState().sessions];
+        const sessionIdx = updatedSessions.findIndex(s => s.id === currentSessionId);
+        if (sessionIdx !== -1) {
+          const msgs = [...updatedSessions[sessionIdx].messages];
+          msgs[msgs.length - 1].content = currentText;
+          updatedSessions[sessionIdx] = { ...updatedSessions[sessionIdx], messages: msgs };
+          useSessionStore.setState({ sessions: updatedSessions });
         }
       }
     } catch (e: any) {
@@ -193,7 +205,6 @@ const Chat = () => {
 
   return (
     <div className="flex h-full w-full animate-fadeIn relative">
-      {/* Session History Sidebar */}
       <div className={cn(
         "absolute lg:static inset-y-0 left-0 w-64 bg-gray-950/50 backdrop-blur-xl border-r border-gray-800 z-40 transition-transform duration-300 lg:translate-x-0",
         showHistory ? "translate-x-0" : "-translate-x-full"
@@ -232,18 +243,8 @@ const Chat = () => {
                   )}
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); startEditing(s); }}
-                    className="p-1 hover:text-white"
-                  >
-                    <Edit2 size={12} />
-                  </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); removeSession(s.id); }}
-                    className="p-1 hover:text-red-400"
-                  >
-                    <Trash2 size={12} />
-                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); startEditing(s); }} className="p-1 hover:text-white"><Edit2 size={12} /></button>
+                  <button onClick={(e) => { e.stopPropagation(); removeSession(s.id); }} className="p-1 hover:text-red-400"><Trash2 size={12} /></button>
                 </div>
               </div>
             ))}
@@ -252,49 +253,21 @@ const Chat = () => {
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 bg-[#0a0b2e]">
-        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900/30 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setShowHistory(!showHistory)}
-              className="lg:hidden text-gray-500"
-            >
-              <History size={20} />
-            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setShowHistory(!showHistory)} className="lg:hidden text-gray-500"><History size={20} /></Button>
             <div className="hidden sm:flex items-center gap-2">
-              <div className="p-1.5 bg-[#6366F1]/20 text-[#6366F1] rounded-lg">
-                <Bot size={16} />
-              </div>
-              <span className="font-bold text-sm text-white truncate max-w-[200px]">
-                {currentSession?.title || "Chat Studio"}
-              </span>
+              <div className="p-1.5 bg-[#6366F1]/20 text-[#6366F1] rounded-lg"><Bot size={16} /></div>
+              <span className="font-bold text-sm text-white truncate max-w-[200px]">{currentSession?.title || "Chat Studio"}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <ModelSelector
-              value={currentSession?.modelId || AUTO_FREE}
-              onChange={handleModelChange}
-              providers={providers}
-              disabled={!hasAnyProvider}
-            />
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setShowSettings(!showSettings)}
-              className={cn(
-                "h-9 w-9",
-                showSettings ? "text-[#6366F1] bg-[#6366F1]/10" : "text-gray-500 hover:text-white"
-              )}
-            >
-              <Settings2 size={18} />
-            </Button>
+            <ModelSelector value={currentSession?.modelId || AUTO_FREE} onChange={handleModelChange} providers={providers} disabled={!hasAnyProvider} />
+            <Button variant="ghost" size="icon" onClick={() => setShowSettings(!showSettings)} className={cn("h-9 w-9", showSettings ? "text-[#6366F1] bg-[#6366F1]/10" : "text-gray-500 hover:text-white")}><Settings2 size={18} /></Button>
           </div>
         </div>
 
-        {/* Chat Area */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 custom-scrollbar">
           {!currentSession?.messages.length && (
             <div className="h-full flex flex-col items-center justify-center text-gray-500 space-y-6">
@@ -303,15 +276,11 @@ const Chat = () => {
               </div>
               <div className="text-center space-y-2">
                 <h3 className="text-xl font-bold text-white">OmniLLM Workspace</h3>
-                <p className="text-sm max-w-xs text-gray-500 mx-auto">
-                  Pick a model and start a secure conversation. Every session is saved locally.
-                </p>
+                <p className="text-sm max-w-xs text-gray-500 mx-auto">Pick a model and start a secure conversation. Every session is saved locally.</p>
               </div>
             </div>
           )}
-          {currentSession?.messages.map((msg, i) => (
-            <MessageBubble key={i} role={msg.role} content={msg.content} />
-          ))}
+          {currentSession?.messages.map((msg, i) => <MessageBubble key={i} role={msg.role} content={msg.content} />)}
           {isTyping && (
             <div className="flex justify-start mb-4 animate-in fade-in slide-in-from-left-2">
               <div className="bg-gray-800/50 text-gray-400 rounded-2xl px-4 py-2 rounded-tl-none text-xs border border-gray-700 flex items-center gap-2">
@@ -326,19 +295,13 @@ const Chat = () => {
           )}
         </div>
 
-        {/* Input Area */}
         <div className="p-4 md:p-8 border-t border-gray-800 bg-gray-900/20">
           <div className="max-w-4xl mx-auto relative group">
             <textarea
               rows={1}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
               placeholder={hasAnyProvider ? "Message OmniLLM..." : "Configure a provider to start chatting"}
               className="w-full bg-gray-800/80 backdrop-blur-md text-white rounded-2xl pl-4 pr-14 py-4 outline-none border border-gray-700 focus:border-[#6366F1] focus:ring-4 ring-[#6366F1]/5 transition-all resize-none shadow-2xl"
               disabled={!hasAnyProvider || isTyping}
@@ -351,37 +314,23 @@ const Chat = () => {
               <Send size={20} />
             </button>
           </div>
-          <p className="text-center text-[10px] text-gray-600 mt-4 uppercase tracking-widest font-bold">
-            Powered by Omni Gateway • End-to-End Encryption
-          </p>
+          <p className="text-center text-[10px] text-gray-600 mt-4 uppercase tracking-widest font-bold">Powered by Omni Gateway • End-to-End Encryption</p>
         </div>
       </div>
 
-      {/* Advanced Settings Panel */}
       {showSettings && (
-        <div className="absolute right-6 top-24 w-80 bg-[#0a0b2e]/95 backdrop-blur-xl border border-gray-700 rounded-3xl shadow-2xl z-50 animate-in slide-in-from-right-4 duration-300">
+        <div className="absolute right-6 top-24 w-80 bg-[#0a0b2e]/95 backdrop-blur-xl border border-gray-700 rounded-3xl shadow-2xl z-50 animate-in slide-in-from-right-4 duration-300 flex flex-col max-h-[70vh]">
           <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-white font-bold">
-              <Sliders size={18} className="text-[#6366F1]" />
-              Session Config
-            </div>
-            <Button variant="ghost" size="icon" onClick={() => setShowSettings(false)} className="text-gray-500 hover:text-white">
-              <X size={18} />
-            </Button>
+            <div className="flex items-center gap-2 text-white font-bold"><Sliders size={18} className="text-[#6366F1]" />Session Config</div>
+            <Button variant="ghost" size="icon" onClick={() => setShowSettings(false)} className="text-gray-500 hover:text-white"><X size={18} /></Button>
           </div>
-          <div className="p-6 space-y-8">
+          <div className="p-6 space-y-8 overflow-y-auto custom-scrollbar">
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <Label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Creativity (Temp)</Label>
                 <span className="text-xs font-mono text-[#6366F1]">{currentSession?.settings.temperature}</span>
               </div>
-              <Slider 
-                value={[currentSession?.settings.temperature || 0.7]} 
-                min={0} 
-                max={1.5} 
-                step={0.1} 
-                onValueChange={([v]) => currentSessionId && updateSession(currentSessionId, { settings: { ...currentSession!.settings, temperature: v }})}
-              />
+              <Slider value={[currentSession?.settings.temperature || 0.7]} min={0} max={1.5} step={0.1} onValueChange={([v]) => currentSessionId && updateSession(currentSessionId, { settings: { ...currentSession!.settings, temperature: v }})} />
             </div>
 
             <div className="space-y-4">
@@ -389,23 +338,32 @@ const Chat = () => {
                 <Label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Max Length</Label>
                 <span className="text-xs font-mono text-[#6366F1]">{currentSession?.settings.maxTokens}</span>
               </div>
-              <Slider 
-                value={[currentSession?.settings.maxTokens || 2048]} 
-                min={256} 
-                max={4096} 
-                step={256} 
-                onValueChange={([v]) => currentSessionId && updateSession(currentSessionId, { settings: { ...currentSession!.settings, maxTokens: v }})}
-              />
+              <Slider value={[currentSession?.settings.maxTokens || 2048]} min={256} max={4096} step={256} onValueChange={([v]) => currentSessionId && updateSession(currentSessionId, { settings: { ...currentSession!.settings, maxTokens: v }})} />
+            </div>
+
+            <div className="pt-4 border-t border-gray-700">
+              <Label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-4">Prompt Templates</Label>
+              <div className="space-y-2">
+                {templates.map(t => (
+                  <button 
+                    key={t.id} 
+                    onClick={() => applyTemplate(t.content)}
+                    className="w-full flex items-center justify-between p-3 bg-gray-900/50 hover:bg-[#6366F1]/10 border border-gray-700 rounded-xl text-left transition-colors group"
+                  >
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <FileText size={12} className="text-gray-600 group-hover:text-[#6366F1]" />
+                      <span className="text-xs font-medium truncate">{t.name}</span>
+                    </div>
+                    <span className="text-[10px] text-gray-600 uppercase font-bold">{t.category}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      <SubscriptionModal
-        open={showSubscriptionModal}
-        onClose={() => setShowSubscriptionModal(false)}
-        triggerFeature="auto-premium"
-      />
+      <SubscriptionModal open={showSubscriptionModal} onClose={() => setShowSubscriptionModal(false)} triggerFeature="auto-premium" />
     </div>
   );
 };
