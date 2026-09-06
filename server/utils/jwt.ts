@@ -5,7 +5,7 @@ import { securityLogger } from "./securityLogger";
 const JWT_CONFIG = {
   secret: process.env.JWT_SECRET || "default-jwt-secret-change-in-production",
   expiresIn: "1h",
-  algorithm: "HS256",
+  algorithm: "HS256" as jwt.Algorithm,
   issuer: "omni-llm",
   audience: "omni-llm-api"
 };
@@ -15,7 +15,7 @@ export const generateToken = (payload: any): string => {
   try {
     const token = jwt.sign(payload, JWT_CONFIG.secret, {
       expiresIn: JWT_CONFIG.expiresIn,
-      algorithm: JWT_CONFIG.algorithm as jwt.Algorithm,
+      algorithm: JWT_CONFIG.algorithm,
       issuer: JWT_CONFIG.issuer,
       audience: JWT_CONFIG.audience
     });
@@ -36,7 +36,7 @@ export const generateToken = (payload: any): string => {
 export const verifyToken = (token: string): any => {
   try {
     const decoded = jwt.verify(token, JWT_CONFIG.secret, {
-      algorithms: [JWT_CONFIG.algorithm as jwt.Algorithm],
+      algorithms: [JWT_CONFIG.algorithm],
       issuer: JWT_CONFIG.issuer,
       audience: JWT_CONFIG.audience
     });
