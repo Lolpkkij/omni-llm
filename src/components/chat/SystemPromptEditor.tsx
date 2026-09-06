@@ -60,7 +60,7 @@ export const SystemPromptEditor = ({
             Save Changes
           </Button>
         </div>
-      </div>
+      </DialogContent>
     </Dialog>
   );
 };
