@@ -1,21 +1,12 @@
-"use client";
-
-import React from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { cn } from '@/lib/utils';
-import { Copy, Check } from 'lucide-react';
-
 export default function MessageBubble({
   role,
   content,
 }: {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system";
   content: string;
 }) {
   const isUser = role === "user";
+  const isSystem = role === "system";
   const [copied, setCopied] = React.useState(false);
 
   const handleCopy = () => {
@@ -27,15 +18,17 @@ export default function MessageBubble({
   return (
     <div className={cn(
       "flex mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300",
-      isUser ? "justify-end" : "justify-start"
+      isUser ? "justify-end" : isSystem ? "justify-center" : "justify-start"
     )}>
       <div className={cn(
         "max-w-[85%] rounded-3xl px-5 py-3 shadow-xl relative group",
         isUser 
           ? "bg-[#6366F1] text-white rounded-tr-none" 
+          : isSystem
+          ? "bg-emerald-500/5 text-emerald-500 rounded-xl border border-emerald-500/20"
           : "bg-gray-800/80 text-gray-100 rounded-tl-none border border-gray-700 backdrop-blur-sm"
       )}>
-        {!isUser && (
+        {!isUser && !isSystem && (
           <button 
             onClick={handleCopy}
             className="absolute -right-10 top-0 p-2 text-gray-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
