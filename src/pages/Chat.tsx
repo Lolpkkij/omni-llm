@@ -52,10 +52,10 @@ import { Textarea } from '@/components/ui/textarea';
 // Import our new modular components
 import { SessionList } from '@/components/chat/SessionList';
 import { ChatHeader } from '@/components/chat/ChatHeader';
-import { MessageList } from '@/components/chat/MessageList';
-import { MessageInput } from '@/components/chat/MessageInput';
-import { SystemPromptEditor } from '@/components/chat/SystemPromptEditor';
-import { SettingsModal } from '@/components/chat/SettingsModal';
+import { MessageList } from '@/components/chat/MessageList>;
+import { MessageInput } from '@/components/chat/MessageInput>;
+import { SystemPromptEditor } from '@/components/chat/SystemPromptEditor>;
+import { SettingsModal } from '@/components/chat/SettingsModal>;
 
 const Chat = () => {
   const {
