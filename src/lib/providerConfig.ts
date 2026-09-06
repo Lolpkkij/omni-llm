@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const ProviderUsageSchema = z.object({
   tokensThisMonth: z.number(),
   spentUSD: z.number(),
