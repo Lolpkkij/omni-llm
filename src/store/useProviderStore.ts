@@ -16,7 +16,7 @@ interface ProviderState {
   setUsageData: (providerId: string, usage: ProviderUsage) => void;
   checkProviderHealth: (id: string) => Promise<void>;
   checkAllHealth: () => Promise<void>;
-  discoverModels: (id: string) => Promise<void>;
+  discoverModels: (id: string) => Promise<any[]>;
 }
 
 export const useProviderStore = create<ProviderState>()(
@@ -95,7 +95,7 @@ export const useProviderStore = create<ProviderState>()(
 
     discoverModels: async (id) => {
       const provider = get().providers.find(p => p.id === id);
-      if (!provider || !provider.encryptedKeys?.length) return;
+      if (!provider || !provider.encryptedKeys?.length) return [];
 
       set(state => ({ isDiscovering: { ...state.isDiscovering, [id]: true } }));
       try {

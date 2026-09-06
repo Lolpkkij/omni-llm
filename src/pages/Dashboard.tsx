@@ -25,6 +25,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useProviderStore } from '@/store/useProviderStore';
 import { useUnifiedKeyStore } from '@/store/useUnifiedKeyStore';
@@ -205,80 +206,69 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              <ShieldCheck size={18} className="text-[#6366F1]" /> Active Node Monitor
-            </h3>
-          </div>
-          <div className="space-y-3">
-            {providers.filter(p => p.enabled).length === 0 ? (
-              <div className="text-center py-16 bg-gray-900/40 border border-dashed border-gray-800 rounded-3xl text-gray-500 text-sm">
-                Connect your first AI node to see status.
-              </div>
-            ) : (
-              providers.filter(p => p.enabled).map(p => (
-                <Card key={p.id} className="bg-gray-900/40 border-gray-800 text-white group overflow-hidden hover:border-[#6366F1]/40 transition-all">
-                  <div 
-                    className="p-4 cursor-pointer flex items-center justify-between hover:bg-gray-800/50 transition-colors"
-                    onClick={() => setExpandedProvider(expandedProvider === p.id ? null : p.id)}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={cn(
-                        "w-2.5 h-2.5 rounded-full", 
-                        p.health?.status === 'online' ? "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" : 
-                        p.health?.status === 'offline' ? "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" : "bg-gray-700"
-                      )} />
-                      <div className="flex flex-col">
-                        <p className="font-bold text-sm tracking-tight">{p.name}</p>
-                        <div className="flex items-center gap-2">
-                          <p className="text-[10px] text-gray-500 font-mono font-bold uppercase tracking-widest">{p.providerType || 'CUSTOM'}</p>
-                          {p.health?.latency && (
-                            <span className="text-[10px] text-[#6366F1] font-bold flex items-center gap-1 bg-[#6366F1]/10 px-1.5 py-0.5 rounded">
-                              <Clock size={8} /> {p.health.latency}ms
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className={cn("text-gray-500 transition-transform", expandedProvider === p.id && "rotate-180")}>
-                      <ChevronDown size={18} />
-                    </div>
+        <Card className="lg:col-span-2 bg-gray-900/40 border-gray-800 text-white">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Activity size={18} className="text-[#6366F1]" /> Node Status
+            </CardTitle>
+            <Badge variant="outline" className="border-gray-800 text-gray-500 text-[10px]">LIVE</Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {providers.filter(p => p.enabled).map(p => (
+                <div key={p.id} className="flex items-center justify-between p-3 bg-gray-800/30 rounded-xl border border-gray-700/50">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-2 h-2 rounded-full",
+                      p.health?.status === 'online' ? "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" : 
+                      p.health?.status === 'offline' ? "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" : "bg-gray-700"
+                    )} />
+                    <span className="text-sm font-medium text-gray-300">{p.name}</span>
                   </div>
+                  <span className="text-[10px] font-mono text-gray-500 uppercase">{p.providerType}</span>
+                </div>
+              ))}
+              {providers.filter(p => p.enabled).length === 0 && (
+                <p className="text-center text-xs text-gray-600 py-4">No active nodes</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-                  {expandedProvider === p.id && (
-                    <CardContent className="px-4 pb-4 pt-2 bg-gray-950/40 border-t border-gray-800 animate-in slide-in-from-top-2">
-                      <div className="space-y-3">
-                        {p.health?.error && (
-                          <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-[10px] text-red-400 font-medium">
-                            <AlertTriangle size={14} /> {p.health.error}
-                          </div>
-                        )}
-                        <div className="flex justify-between text-[10px] font-bold text-gray-600 uppercase tracking-widest">
-                          <span>Endpoint Traffic</span>
-                          <span>Monthly Total</span>
-                        </div>
-                        <div className="space-y-1.5">
-                          {p.usage?.models.length ? p.usage.models.map((m, i) => (
-                            <div key={i} className="flex justify-between items-center text-xs">
-                              <span className="text-gray-400 font-medium">{m.name}</span>
-                              <span className="font-mono text-white font-bold">{m.tokens.toLocaleString()}</span>
-                            </div>
-                          )) : <p className="text-center text-[10px] text-gray-600 italic py-2">No activity detected on this node</p>}
-                        </div>
-                        <div className="pt-2 border-t border-gray-800 flex justify-between items-center">
-                          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Estimated Cost</span>
-                          <span className="text-xs font-mono text-emerald-500 font-bold">${p.usage?.spentUSD.toFixed(4) || '0.0000'}</span>
-                        </div>
-                      </div>
-                    </CardContent>
+      <Card className="bg-gray-900/40 border-gray-800 text-white">
+        <CardHeader>
+          <CardTitle>Active Provider Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {providers.filter(p => p.enabled).map(p => (
+              <div key={p.id} className="flex items-center justify-between p-4 bg-gray-800/30 rounded-2xl border border-gray-700/50 group hover:border-[#6366F1]/50 transition-all">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-gray-800 rounded-xl flex items-center justify-center font-bold text-[#6366F1]">
+                    {p.name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm">{p.name}</p>
+                    <p className="text-[10px] text-gray-500 font-mono">{p.baseUrl}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-gray-500 font-mono uppercase">{p.providerType}</p>
+                  {p.health?.latency && (
+                    <p className="text-[10px] text-[#6366F1] font-bold mt-1">{p.health.latency}ms</p>
                   )}
-                </Card>
-              ))
+                </div>
+              </div>
+            ))}
+            {providers.filter(p => p.enabled).length === 0 && (
+              <div className="py-12 text-center text-gray-500 border-2 border-dashed border-gray-800 rounded-3xl">
+                No active providers configured. Add a provider to see details.
+              </div>
             )}
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
