@@ -16,13 +16,17 @@ import {
   MessageSquare,
   Edit2,
   Check,
-  FileText
+  FileText,
+  Search,
+  ArrowDown,
+  Download
 } from 'lucide-react';
 import { useSessionStore, ChatSession } from '@/store/useSessionStore';
 import { useLogStore } from '@/store/useLogStore';
 import { usePromptStore } from '@/store/usePromptStore';
 import MessageBubble from '@/components/MessageBubble';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useProviderStore } from '@/store/useProviderStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
@@ -52,12 +56,14 @@ const Chat = () => {
   const { addLog } = useLogStore();
   
   const [input, setInput] = useState('');
+  const [sessionSearch, setSessionSearch] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentSession = sessions.find(s => s.id === currentSessionId);
@@ -70,7 +76,19 @@ const Chat = () => {
   }, [providers, currentSessionId]);
 
   useEffect(() => {
-    if (scrollRef.current) {
+    const handleScroll = () => {
+      if (scrollRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+        setShowScrollBtn(scrollHeight - scrollTop - clientHeight > 300);
+      }
+    };
+    const el = scrollRef.current;
+    el?.addEventListener('scroll', handleScroll);
+    return () => el?.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (scrollRef.current && !showScrollBtn) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [currentSession?.messages, isTyping]);
@@ -85,12 +103,18 @@ const Chat = () => {
     }
   };
 
-  const applyTemplate = (templateContent: string) => {
-    if (!currentSessionId) return;
-    
-    // Inject template as a system-like first message or update instructions
-    setInput(templateContent);
-    toast.success("Template content loaded into input");
+  const exportMarkdown = () => {
+    if (!currentSession) return;
+    const content = currentSession.messages
+      .map(m => `### ${m.role.toUpperCase()}\n\n${m.content}\n\n---`)
+      .join('\n\n');
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${currentSession.title.replace(/\s+/g, '-').toLowerCase()}.md`;
+    a.click();
+    toast.success("Conversation exported as Markdown");
   };
 
   const handleSend = async () => {
@@ -122,10 +146,6 @@ const Chat = () => {
         model = routed.model.id;
         finalProvider = routed.provider.name;
         finalModel = model;
-        
-        toast.success(`Routing to ${routed.model.name}`, {
-          icon: finalModel === AUTO_FREE ? <Zap size={14} className="text-green-400" /> : <Sparkles size={14} className="text-yellow-400" />
-        });
       } else {
         const availableProviders = providers.filter(p => p.enabled && p.encryptedKeys?.length);
         const p = availableProviders[0];
@@ -189,61 +209,66 @@ const Chat = () => {
     }
   };
 
-  const startEditing = (s: ChatSession) => {
-    setEditingId(s.id);
-    setEditTitle(s.title);
-  };
-
-  const saveTitle = () => {
-    if (editingId) {
-      renameSession(editingId, editTitle);
-      setEditingId(null);
-    }
-  };
+  const filteredSessions = sessions.filter(s => 
+    s.title.toLowerCase().includes(sessionSearch.toLowerCase())
+  );
 
   const hasAnyProvider = providers.some(p => p.enabled && p.encryptedKeys?.length);
 
   return (
     <div className="flex h-full w-full animate-fadeIn relative">
       <div className={cn(
-        "absolute lg:static inset-y-0 left-0 w-64 bg-gray-950/50 backdrop-blur-xl border-r border-gray-800 z-40 transition-transform duration-300 lg:translate-x-0",
+        "absolute lg:static inset-y-0 left-0 w-72 bg-gray-950/80 backdrop-blur-2xl border-r border-gray-800 z-40 transition-transform duration-300 lg:translate-x-0",
         showHistory ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-4 flex flex-col h-full">
           <Button 
             onClick={() => createSession(AUTO_FREE)}
-            className="w-full bg-[#6366F1]/10 text-[#6366F1] border border-[#6366F1]/20 hover:bg-[#6366F1]/20 rounded-xl mb-6 flex items-center justify-start gap-2"
+            className="w-full bg-[#6366F1] hover:bg-[#4f46e5] text-white rounded-xl mb-4 flex items-center justify-center gap-2 shadow-lg shadow-[#6366F1]/20"
           >
-            <Plus size={18} /> New Chat
+            <Plus size={18} /> New Conversation
           </Button>
+
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+            <input 
+              className="w-full bg-gray-900/50 border border-gray-800 rounded-lg pl-9 pr-3 py-2 text-xs text-white focus:ring-1 ring-[#6366F1] outline-none"
+              placeholder="Search chats..."
+              value={sessionSearch}
+              onChange={e => setSessionSearch(e.target.value)}
+            />
+          </div>
           
           <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
-            {sessions.map(s => (
+            {filteredSessions.map(s => (
               <div 
                 key={s.id}
                 className={cn(
-                  "group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all",
-                  currentSessionId === s.id ? "bg-gray-800 text-white" : "text-gray-500 hover:bg-gray-900 hover:text-gray-300"
+                  "group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border border-transparent",
+                  currentSessionId === s.id ? "bg-gray-800 border-gray-700 text-white" : "text-gray-500 hover:bg-gray-900/50 hover:text-gray-300"
                 )}
-                onClick={() => setCurrentSession(s.id)}
+                onClick={() => { setCurrentSession(s.id); if(window.innerWidth < 1024) setShowHistory(false); }}
               >
-                <div className="flex items-center gap-2 overflow-hidden flex-1">
-                  <MessageSquare size={14} className={currentSessionId === s.id ? "text-[#6366F1]" : "text-gray-600"} />
+                <div className="flex items-center gap-3 overflow-hidden flex-1">
+                  <div className={cn(
+                    "w-2 h-2 rounded-full shrink-0",
+                    currentSessionId === s.id ? "bg-[#6366F1] shadow-[0_0_8px_#6366F1]" : "bg-gray-700"
+                  )} />
                   {editingId === s.id ? (
                     <input
                       autoFocus
                       className="bg-transparent border-none outline-none text-xs w-full"
                       value={editTitle}
                       onChange={e => setEditTitle(e.target.value)}
-                      onBlur={saveTitle}
-                      onKeyDown={e => e.key === 'Enter' && saveTitle()}
+                      onBlur={() => { renameSession(s.id, editTitle); setEditingId(null); }}
+                      onKeyDown={e => e.key === 'Enter' && (renameSession(s.id, editTitle), setEditingId(null))}
                     />
                   ) : (
-                    <span className="text-xs font-medium truncate">{s.title}</span>
+                    <span className="text-xs font-semibold truncate">{s.title}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={(e) => { e.stopPropagation(); startEditing(s); }} className="p-1 hover:text-white"><Edit2 size={12} /></button>
+                  <button onClick={(e) => { e.stopPropagation(); setEditingId(s.id); setEditTitle(s.title); }} className="p-1 hover:text-white"><Edit2 size={12} /></button>
                   <button onClick={(e) => { e.stopPropagation(); removeSession(s.id); }} className="p-1 hover:text-red-400"><Trash2 size={12} /></button>
                 </div>
               </div>
@@ -253,108 +278,119 @@ const Chat = () => {
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 bg-[#0a0b2e]">
-        <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900/30 backdrop-blur-md">
+        <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900/40 backdrop-blur-md">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => setShowHistory(!showHistory)} className="lg:hidden text-gray-500"><History size={20} /></Button>
-            <div className="hidden sm:flex items-center gap-2">
-              <div className="p-1.5 bg-[#6366F1]/20 text-[#6366F1] rounded-lg"><Bot size={16} /></div>
-              <span className="font-bold text-sm text-white truncate max-w-[200px]">{currentSession?.title || "Chat Studio"}</span>
+            <div className="hidden sm:flex items-center gap-3">
+              <div className="p-2 bg-[#6366F1]/10 text-[#6366F1] rounded-xl"><Bot size={18} /></div>
+              <div>
+                <span className="font-bold text-sm text-white block">{currentSession?.title || "Chat Studio"}</span>
+                <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Encrypted Session</span>
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={exportMarkdown} className="h-9 w-9 text-gray-500 hover:text-white" title="Export as Markdown"><Download size={18} /></Button>
             <ModelSelector value={currentSession?.modelId || AUTO_FREE} onChange={handleModelChange} providers={providers} disabled={!hasAnyProvider} />
             <Button variant="ghost" size="icon" onClick={() => setShowSettings(!showSettings)} className={cn("h-9 w-9", showSettings ? "text-[#6366F1] bg-[#6366F1]/10" : "text-gray-500 hover:text-white")}><Settings2 size={18} /></Button>
           </div>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 custom-scrollbar">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 custom-scrollbar relative">
           {!currentSession?.messages.length && (
             <div className="h-full flex flex-col items-center justify-center text-gray-500 space-y-6">
-              <div className="w-20 h-20 bg-gray-800/40 rounded-full flex items-center justify-center border border-gray-700">
-                <Bot size={40} className="opacity-20" />
+              <div className="w-24 h-24 bg-gray-900/50 rounded-3xl flex items-center justify-center border border-gray-800 shadow-2xl">
+                <Bot size={48} className="text-[#6366F1] opacity-50" />
               </div>
               <div className="text-center space-y-2">
-                <h3 className="text-xl font-bold text-white">OmniLLM Workspace</h3>
-                <p className="text-sm max-w-xs text-gray-500 mx-auto">Pick a model and start a secure conversation. Every session is saved locally.</p>
+                <h3 className="text-2xl font-bold text-white">OmniLLM Workspace</h3>
+                <p className="text-sm max-w-xs text-gray-500 mx-auto">Select a provider and model to begin. Your keys are managed securely on the gateway.</p>
               </div>
             </div>
           )}
           {currentSession?.messages.map((msg, i) => <MessageBubble key={i} role={msg.role} content={msg.content} />)}
           {isTyping && (
             <div className="flex justify-start mb-4 animate-in fade-in slide-in-from-left-2">
-              <div className="bg-gray-800/50 text-gray-400 rounded-2xl px-4 py-2 rounded-tl-none text-xs border border-gray-700 flex items-center gap-2">
+              <div className="bg-gray-800/50 text-gray-400 rounded-2xl px-5 py-3 rounded-tl-none text-xs border border-gray-700 flex items-center gap-3">
                 <div className="flex gap-1">
-                  <span className="w-1 h-1 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1 h-1 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1 h-1 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <span className="w-1.5 h-1.5 bg-[#6366F1] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 bg-[#6366F1] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 bg-[#6366F1] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
-                Generating response...
+                <span>Omni is thinking...</span>
               </div>
             </div>
           )}
+
+          {showScrollBtn && (
+            <button 
+              onClick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })}
+              className="fixed bottom-32 right-8 p-3 bg-[#6366F1] text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all z-30"
+            >
+              <ArrowDown size={20} />
+            </button>
+          )}
         </div>
 
-        <div className="p-4 md:p-8 border-t border-gray-800 bg-gray-900/20">
+        <div className="p-4 md:p-8 border-t border-gray-800 bg-gray-900/30">
           <div className="max-w-4xl mx-auto relative group">
             <textarea
               rows={1}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              placeholder={hasAnyProvider ? "Message OmniLLM..." : "Configure a provider to start chatting"}
-              className="w-full bg-gray-800/80 backdrop-blur-md text-white rounded-2xl pl-4 pr-14 py-4 outline-none border border-gray-700 focus:border-[#6366F1] focus:ring-4 ring-[#6366F1]/5 transition-all resize-none shadow-2xl"
+              placeholder={hasAnyProvider ? "Describe what you need..." : "Please configure an AI provider first"}
+              className="w-full bg-gray-800/80 backdrop-blur-xl text-white rounded-2xl pl-5 pr-16 py-4 outline-none border border-gray-700 focus:border-[#6366F1] focus:ring-4 ring-[#6366F1]/10 transition-all resize-none shadow-2xl"
               disabled={!hasAnyProvider || isTyping}
             />
             <button
               onClick={handleSend}
-              className="absolute right-3 bottom-3 p-2.5 bg-[#6366F1] text-white rounded-xl hover:bg-[#4f46e5] transition-all hover:scale-105 active:scale-95 disabled:opacity-50 shadow-lg shadow-[#6366F1]/20"
+              className="absolute right-3.5 bottom-3.5 p-2.5 bg-[#6366F1] text-white rounded-xl hover:bg-[#4f46e5] transition-all hover:scale-105 active:scale-95 disabled:opacity-50 shadow-lg shadow-[#6366F1]/40"
               disabled={!input.trim() || isTyping || !hasAnyProvider}
             >
               <Send size={20} />
             </button>
           </div>
-          <p className="text-center text-[10px] text-gray-600 mt-4 uppercase tracking-widest font-bold">Powered by Omni Gateway • End-to-End Encryption</p>
         </div>
       </div>
 
       {showSettings && (
-        <div className="absolute right-6 top-24 w-80 bg-[#0a0b2e]/95 backdrop-blur-xl border border-gray-700 rounded-3xl shadow-2xl z-50 animate-in slide-in-from-right-4 duration-300 flex flex-col max-h-[70vh]">
+        <div className="absolute right-6 top-24 w-80 bg-[#0a0b2e]/95 backdrop-blur-2xl border border-gray-700 rounded-3xl shadow-2xl z-50 animate-in slide-in-from-right-4 duration-300 flex flex-col max-h-[70vh]">
           <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-white font-bold"><Sliders size={18} className="text-[#6366F1]" />Session Config</div>
+            <div className="flex items-center gap-2 text-white font-bold"><Sliders size={18} className="text-[#6366F1]" />Configuration</div>
             <Button variant="ghost" size="icon" onClick={() => setShowSettings(false)} className="text-gray-500 hover:text-white"><X size={18} /></Button>
           </div>
           <div className="p-6 space-y-8 overflow-y-auto custom-scrollbar">
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <Label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Creativity (Temp)</Label>
-                <span className="text-xs font-mono text-[#6366F1]">{currentSession?.settings.temperature}</span>
+                <Label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Creativity</Label>
+                <span className="text-xs font-mono text-[#6366F1] font-bold">{currentSession?.settings.temperature}</span>
               </div>
               <Slider value={[currentSession?.settings.temperature || 0.7]} min={0} max={1.5} step={0.1} onValueChange={([v]) => currentSessionId && updateSession(currentSessionId, { settings: { ...currentSession!.settings, temperature: v }})} />
             </div>
 
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <Label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Max Length</Label>
-                <span className="text-xs font-mono text-[#6366F1]">{currentSession?.settings.maxTokens}</span>
+                <Label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Response Depth</Label>
+                <span className="text-xs font-mono text-[#6366F1] font-bold">{currentSession?.settings.maxTokens}</span>
               </div>
               <Slider value={[currentSession?.settings.maxTokens || 2048]} min={256} max={4096} step={256} onValueChange={([v]) => currentSessionId && updateSession(currentSessionId, { settings: { ...currentSession!.settings, maxTokens: v }})} />
             </div>
 
             <div className="pt-4 border-t border-gray-700">
-              <Label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-4">Prompt Templates</Label>
-              <div className="space-y-2">
+              <Label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-4">Quick Templates</Label>
+              <div className="grid grid-cols-1 gap-2">
                 {templates.map(t => (
                   <button 
                     key={t.id} 
-                    onClick={() => applyTemplate(t.content)}
-                    className="w-full flex items-center justify-between p-3 bg-gray-900/50 hover:bg-[#6366F1]/10 border border-gray-700 rounded-xl text-left transition-colors group"
+                    onClick={() => { setInput(t.content); toast.success("Template applied"); }}
+                    className="w-full flex items-center justify-between p-3 bg-gray-900/50 hover:bg-[#6366F1]/10 border border-gray-800 rounded-xl text-left transition-all group"
                   >
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      <FileText size={12} className="text-gray-600 group-hover:text-[#6366F1]" />
-                      <span className="text-xs font-medium truncate">{t.name}</span>
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <FileText size={14} className="text-gray-600 group-hover:text-[#6366F1]" />
+                      <span className="text-xs font-semibold truncate text-gray-300 group-hover:text-white">{t.name}</span>
                     </div>
-                    <span className="text-[10px] text-gray-600 uppercase font-bold">{t.category}</span>
                   </button>
                 ))}
               </div>
