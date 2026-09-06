@@ -1,4 +1,3 @@
-' and adding missing closing quotes.">
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -48,15 +47,15 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea>;
+import { Textarea } from '@/components/ui/textarea';
 
 // Import our new modular components
 import { SessionList } from '@/components/chat/SessionList';
 import { ChatHeader } from '@/components/chat/ChatHeader';
-import { MessageList } from '@/components/chat/MessageList>;
-import { MessageInput } from '@/components/chat/MessageInput>;
-import { SystemPromptEditor } from '@/components/chat/SystemPromptEditor>;
-import { SettingsModal } from '@/components/chat/SettingsModal>;
+import { MessageList } from '@/components/chat/MessageList';
+import { MessageInput } from '@/components/chat/MessageInput';
+import { SystemPromptEditor } from '@/components/chat/SystemPromptEditor';
+import { SettingsModal } from '@/components/chat/SettingsModal';
 
 const Chat = () => {
   const {
@@ -351,10 +350,10 @@ const Chat = () => {
       <div className="flex-1 flex flex-col min-w-0 bg-[#0a0b2e]">
         <ChatHeader
           input={input}
-          setInput={setInput}
+          setInput={(e) => setInput(e.target.value)}
           handleSend={handleSend}
           hasAnyProvider={hasAnyProvider}
-          currentSession={currentSession}
+          currentSession={currentSession || null}
           showSystemPrompt={showSystemPrompt}
           setShowSystemPrompt={setShowSystemPrompt}
           showSettings={showSettings}
@@ -404,7 +403,7 @@ const Chat = () => {
 
         <MessageInput
           input={input}
-          setInput={setInput}
+          setInput={(e) => setInput(e.target.value)}
           handleSend={handleSend}
           hasAnyProvider={hasAnyProvider}
           isTyping={isTyping}
