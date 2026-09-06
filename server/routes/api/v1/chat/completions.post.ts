@@ -15,11 +15,11 @@ export default defineHandler(async (event) => {
 
   const providedKey = authHeader.replace('Bearer ', '');
   const UNIFIED_KEY = process.env.OMNI_UNIFIED_KEY;
-  
+
   if (!UNIFIED_KEY) {
     throw createError({ statusCode: 500, statusMessage: "Server configuration error" });
   }
-  
+
   if (providedKey !== UNIFIED_KEY) {
     throw createError({ statusCode: 403, statusMessage: "Invalid Unified API Key" });
   }
@@ -31,7 +31,7 @@ export default defineHandler(async (event) => {
 
   const allProviders = await getAllProviders();
   const config = allProviders.find(p => p.enabled);
-  
+
   if (!config) {
     throw createError({ statusCode: 500, statusMessage: "No enabled providers configured" });
   }
@@ -56,7 +56,7 @@ export default defineHandler(async (event) => {
 
   const endpoint = `${config.baseUrl.replace(/\/+$/, "")}${config.modelPath}`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  
+
   if (config.auth.type === "header") {
     headers[config.auth.keyName] = `${config.auth.prefix ?? ""}${apiKey}`;
   }
@@ -81,9 +81,9 @@ export default defineHandler(async (event) => {
     });
 
     if (!upstream.ok) {
-      throw createError({ 
-        statusCode: upstream.status, 
-        statusMessage: "Upstream provider error" 
+      throw createError({
+        statusCode: upstream.status,
+        statusMessage: "Upstream provider error"
       });
     }
 
@@ -103,12 +103,12 @@ export default defineHandler(async (event) => {
       },
     });
 
-    return new Response(stream, { 
-      headers: { 
+    return new Response(stream, {
+      headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         "Connection": "keep-alive",
-      } 
+      }
     });
 
   } catch (e: any) {

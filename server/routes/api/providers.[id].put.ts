@@ -1,6 +1,6 @@
 import { defineHandler } from "nitro";
 import { readBody, getRouterParam, createError } from "nitro/h3";
-import { updateProvider } from "../../../utils/providerStore";
+import { updateProvider } from "../utils/providerStore";
 
 export default defineHandler(async (event) => {
   const { id } = getRouterParam(event);

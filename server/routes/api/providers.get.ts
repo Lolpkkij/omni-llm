@@ -1,6 +1,6 @@
 import { defineHandler } from "nitro";
 import { createError } from "nitro/h3";
-import { getAllProviders } from "../../../utils/providerStore";
+import { getAllProviders } from "../utils/providerStore";
 
 export default defineHandler(async () => {
   try {
