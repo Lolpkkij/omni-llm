@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { createAuthClient } from "@neondatabase/auth";
 import { BetterAuthReactAdapter } from "@neondatabase/auth/react/adapters";
 import { NeonAuthUIProvider } from "@neondatabase/auth/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useSubscriptionStore } from "@/store/useSubscriptionStore";
 import { toast } from "sonner";
 

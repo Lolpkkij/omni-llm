@@ -95,8 +95,81 @@ export const useSessionStore = create<SessionState>()(
         return id;
       },
 
-      // Other methods remain similar but ensure they work with encrypted data
-      // ...
+      removeSession: (id) => {
+        set((state) => ({
+          sessions: state.sessions.filter(s => s.id !== id),
+          currentSessionId: state.currentSessionId === id ? null : state.currentSessionId
+        }));
+      },
+
+      setCurrentSession: (id) => {
+        set({ currentSessionId: id });
+      },
+
+      updateSession: (id, updates) => {
+        set((state) => ({
+          sessions: state.sessions.map(s =>
+            s.id === id ? { ...s, ...updates, updatedAt: Date.now() } : s
+          )
+        }));
+      },
+
+      addMessageToSession: (sessionId, message) => {
+        const timestamp = Date.now();
+        const id = crypto.randomUUID();
+
+        set((state) => ({
+          sessions: state.sessions.map(s =>
+            s.id === sessionId
+              ? {
+                  ...s,
+                  messages: [...s.messages, { ...message, timestamp, id }],
+                  updatedAt: timestamp
+                }
+              : s
+          )
+        }));
+      },
+
+      editMessageInSession: (sessionId, messageId, newContent) => {
+        set((state) => ({
+          sessions: state.sessions.map(s =>
+            s.id === sessionId
+              ? {
+                  ...s,
+                  messages: s.messages.map(m =>
+                    m.id === messageId ? { ...m, content: newContent } : m
+                  ),
+                  updatedAt: Date.now()
+                }
+              : s
+          )
+        }));
+      },
+
+      deleteMessageInSession: (sessionId, messageId) => {
+        set((state) => ({
+          sessions: state.sessions.map(s =>
+            s.id === sessionId
+              ? {
+                  ...s,
+                  messages: s.messages.map(m =>
+                    m.id === messageId ? { ...m, isDeleted: true } : m
+                  ),
+                  updatedAt: Date.now()
+                }
+              : s
+          )
+        }));
+      },
+
+      renameSession: (id, title) => {
+        set((state) => ({
+          sessions: state.sessions.map(s =>
+            s.id === id ? { ...s, title, updatedAt: Date.now() } : s
+          )
+        }));
+      },
 
       // Enhanced clearAllSessions with secure deletion
       clearAllSessions: () => {

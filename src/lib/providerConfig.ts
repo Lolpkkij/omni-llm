@@ -41,7 +41,7 @@ export const ProviderSchema = z.object({
   modelPath: z.string().optional(),
 });
 
-export type ProviderConfig = z.infer<typeof ProviderSchema>;
+export type Provider = z.infer<typeof ProviderSchema>;
 
 export function isSafeUrl(urlStr: string): boolean {
   try {
