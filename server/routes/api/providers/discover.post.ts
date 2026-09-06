@@ -1,7 +1,7 @@
 import { defineHandler } from "nitro";
 import { readBody, createError } from "nitro/h3";
 import CryptoJS from "crypto-js";
-import { getAllProviders } from "../../../utils/providerStore";
+import { getAllProviders } from "../../utils/providerStore";
 import { useRuntimeConfig } from "nitro";
 
 export default defineHandler(async (event) => {
@@ -26,31 +26,31 @@ export default defineHandler(async (event) => {
 
   // Standard OpenAI-compatible models endpoint
   const modelsUrl = provider.baseUrl.replace(/\/+$/, "") + "/models";
-  
+
   try {
-    const headers: Record<string, string> = { 
+    const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "Authorization": `${provider.auth.prefix ?? ""}${apiKey}`
     };
 
     const res = await fetch(modelsUrl, { headers });
-    
+
     if (!res.ok) {
-        // Fallback for some providers that use different paths
-        const fallbackUrl = provider.baseUrl.replace(/\/+$/, "") + "/v1/models";
-        const fallbackRes = await fetch(fallbackUrl, { headers });
-        if (!fallbackRes.ok) throw new Error(`Provider returned ${res.status}`);
-        const data = await fallbackRes.json();
-        return data.data || data;
+      // Fallback for some providers that use different paths
+      const fallbackUrl = provider.baseUrl.replace(/\/+$/, "") + "/v1/models";
+      const fallbackRes = await fetch(fallbackUrl, { headers });
+      if (!fallbackRes.ok) throw new Error(`Provider returned ${res.status}`);
+      const data = await fallbackRes.json();
+      return data.data || data;
     }
 
     const data = await res.json();
     // Return the list of model objects (usually under .data in OpenAI spec)
     return data.data || data;
   } catch (e: any) {
-    throw createError({ 
-      statusCode: 500, 
-      statusMessage: `Discovery failed: ${e.message}` 
+    throw createError({
+      statusCode: 500,
+      statusMessage: `Discovery failed: ${e.message}`
     });
   }
 });

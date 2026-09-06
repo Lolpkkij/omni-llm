@@ -2,6 +2,7 @@ import { defineHandler } from "nitro";
 import { readBody, createError } from "nitro/h3";
 import CryptoJS from "crypto-js";
 import { getAllProviders } from "../../utils/providerStore";
+import { useRuntimeConfig } from "nitro";
 
 // Global In-Memory Cache (Reset on server restart)
 const RESPONSE_CACHE = new Map<string, { content: string; timestamp: number }>();
@@ -53,25 +54,25 @@ export default defineHandler(async (event) => {
   if (keys.length === 0) {
     throw createError({ statusCode: 500, statusMessage: "No API keys configured for this provider" });
   }
-  
+
   const chosenEncryptedKey = keys[Math.floor(Math.random() * keys.length)];
 
   // Decrypt API key using server-side salt
   const runtimeConfig = useRuntimeConfig();
   const salt = (runtimeConfig as any).NITRO_ENCRYPTION_SALT || "";
   const apiKey = CryptoJS.AES.decrypt(chosenEncryptedKey, salt).toString(CryptoJS.enc.Utf8);
-  
+
   if (!apiKey) throw createError({ statusCode: 401, statusMessage: "Failed to decrypt API key" });
 
   // Build endpoint URL
   const endpoint = `${config.baseUrl.replace(/\/+$/, "")}${config.modelPath || '/chat/completions'}`;
 
   // Build request headers
-  const headers: Record<string, string> = { 
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "Accept": "text/event-stream"
   };
-  
+
   if (config.auth.type === "header") {
     headers[config.auth.keyName] = `${config.auth.prefix ?? ""}${apiKey}`;
   }
@@ -104,18 +105,17 @@ export default defineHandler(async (event) => {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        
+
         const chunk = new TextDecoder().decode(value);
         fullContent += chunk;
-        
+
         controller.enqueue(value);
+
+        // Store in cache if enabled
+        if (params?.useCache && fullContent) {
+          RESPONSE_CACHE.set(cacheKey, { content: fullContent, timestamp: Date.now() });
+        }
       }
-      
-      // Store in cache if enabled
-      if (params?.useCache && fullContent) {
-        RESPONSE_CACHE.set(cacheKey, { content: fullContent, timestamp: Date.now() });
-      }
-      
       controller.close();
     },
   });

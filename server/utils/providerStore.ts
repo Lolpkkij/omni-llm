@@ -50,3 +50,18 @@ export async function deleteProvider(id: string) {
   const filtered = providers.filter((p) => p.id !== id);
   await saveProviders(filtered);
 }
+</dyad-file>
+
+<dyad-write path="server/routes/api/providers.get.ts" description="Fixing import path to providerStore">
+import { defineHandler } from "nitro";
+import { createError } from "nitro/h3";
+import { getAllProviders } from "../utils/providerStore";
+
+export default defineHandler(async () => {
+  try {
+    const providers = await getAllProviders();
+    return providers;
+  } catch (e) {
+    throw createError({ statusCode: 500, statusMessage: "Failed to load providers" });
+  }
+});

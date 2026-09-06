@@ -16,7 +16,7 @@ export default defineHandler(async (event) => {
   }
 
   const config = useRuntimeConfig();
-  const salt = (config as any).NITRO_ENCRYPTION_SALT;
+  const salt = (config as any).NITRO_ENCRYPTION_SALT || "";
 
   if (!salt) {
     throw createError({ statusCode: 500, statusMessage: "Server encryption salt is not configured" });
@@ -29,7 +29,7 @@ export default defineHandler(async (event) => {
       throw createError({ statusCode: 404, statusMessage: "Provider not found" });
     }
 
-    // Encrypt the key using the server‑side salt
+    // Encrypt the key using the server-side salt
     const encryptedKey = CryptoJS.AES.encrypt(body.apiKey, salt).toString();
 
     // Append the new encrypted key to the provider's list

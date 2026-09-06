@@ -23,7 +23,7 @@ export default defineHandler(async (event) => {
 
   const allProviders = await getAllProviders();
   const provider = allProviders.find(p => p.id === providerId);
-  
+
   if (!provider) {
     throw createError({ statusCode: 404, statusMessage: "Provider not found" });
   }
@@ -32,7 +32,6 @@ export default defineHandler(async (event) => {
   switch (provider.providerType) {
     case "openai":
       try {
-        // Simulated OpenAI usage response
         return {
           tokensThisMonth: Math.floor(Math.random() * 1000000),
           spentUSD: parseFloat((Math.random() * 10).toFixed(2)),
@@ -53,11 +52,10 @@ export default defineHandler(async (event) => {
     case "gemini":
       return {
         tokensThisMonth: Math.floor(Math.random() * 2000000),
-        spentUSD: 0, // Often free tier
+        spentUSD: 0,
         models: [{ name: "gemini-pro", tokens: 1800000 }],
       };
     default:
-      // Return empty for custom providers that don't have a known usage path
       return {
         tokensThisMonth: 0,
         spentUSD: 0,

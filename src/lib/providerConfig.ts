@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 export const ProviderUsageSchema = z.object({
   tokensThisMonth: z.number(),
   spentUSD: z.number(),
@@ -41,16 +39,13 @@ export const ProviderSchema = z.object({
   modelPath: z.string().optional(),
 });
 
-export type Provider = z.infer<typeof ProviderSchema>;
+export type ProviderConfig = z.infer<typeof ProviderSchema>;
 
-/**
- * Validates that a URL does not point to sensitive local addresses unless explicitly allowed.
- */
 export function isSafeUrl(urlStr: string): boolean {
   try {
     const url = new URL(urlStr);
     const hostname = url.hostname;
-    
+
     // Explicitly allow common local dev addresses if the user adds them
     if (["localhost", "127.0.0.1"].includes(hostname)) return true;
 
@@ -62,7 +57,7 @@ export function isSafeUrl(urlStr: string): boolean {
       /^169\.254\./,
     ];
 
-    return !forbiddenPatterns.some(pattern => 
+    return !forbiddenPatterns.some(pattern =>
       typeof pattern === "string" ? hostname === pattern : pattern.test(hostname)
     );
   } catch {

@@ -33,7 +33,6 @@ export default defineHandler(async (event) => {
     }
 
     // Perform a minimal probe - try to list models or a simple health check
-    // We use a small timeout to avoid hanging the gateway
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
@@ -49,7 +48,7 @@ export default defineHandler(async (event) => {
     const latency = Date.now() - startTime;
 
     return {
-      status: res.ok || res.status === 405 ? "online" : "offline", // 405 Method Not Allowed still means the server is reachable
+      status: res.ok || res.status === 405 ? "online" : "offline",
       latency,
       lastChecked: Date.now(),
       error: res.ok ? undefined : `Status: ${res.status}`
