@@ -8,6 +8,21 @@ export type ChatMessage = {
   id: string;
   isEditing?: boolean;
   isDeleted?: boolean;
+  isLoading?: boolean;
+  error?: string;
+};
+
+export type ChatSession = {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  systemPrompt: string;
+  modelId: string;
+  settings: {
+    temperature: number;
+    maxTokens: number;
+  };
+  updatedAt: number;
 };
 
 interface SessionState {
