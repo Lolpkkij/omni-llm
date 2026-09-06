@@ -4,13 +4,15 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus,
   Trash2,
-  Edit2,
   CheckCircle2,
   Globe,
   ShieldCheck,
   Key as KeyIcon,
   ExternalLink,
   Power,
+  RefreshCw,
+  Search,
+  Bot
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +24,7 @@ import ConfirmModal from '@/components/ConfirmModal';
 import { cn } from '@/lib/utils';
 
 const Providers = () => {
-  const { providers, load, removeProvider, updateProvider } = useProviderStore();
+  const { providers, load, removeProvider, updateProvider, discoverModels, isDiscovering } = useProviderStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -43,12 +45,21 @@ const Providers = () => {
     toast.success(`${provider.name} ${!provider.enabled ? 'enabled' : 'disabled'}`);
   };
 
+  const handleDiscover = async (id: string, name: string) => {
+    try {
+      const models = await discoverModels(id);
+      toast.success(`Successfully discovered ${models.length} models for ${name}`);
+    } catch (e: any) {
+      toast.error(`Discovery failed: Ensure your API key is correct.`);
+    }
+  };
+
   return (
-    <div className="max-w-6xl mx-auto w-full p-6 animate-fadeIn">
+    <div className="max-w-6xl mx-auto w-full p-6 animate-fadeIn h-full overflow-y-auto pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
         <div>
           <h1 className="text-4xl font-bold text-white tracking-tight">AI Providers</h1>
-          <p className="text-gray-400 mt-2">Configure endpoints and authentication for your model providers</p>
+          <p className="text-gray-400 mt-2">Manage endpoints and sync available models across your AI stack</p>
         </div>
 
         <Button 
@@ -86,24 +97,37 @@ const Providers = () => {
               <CardContent className="p-0">
                 <div className="flex flex-col md:flex-row">
                   <div className="flex-1 p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
-                        p.enabled ? "bg-[#6366F1]/20 text-[#6366F1]" : "bg-gray-700 text-gray-500"
-                      )}>
-                        <Globe size={20} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-xl font-bold text-white">{p.name}</h3>
-                          {p.enabled ? (
-                            <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Active</Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-gray-500 border-gray-700">Disabled</Badge>
-                          )}
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                        <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
+                            p.enabled ? "bg-[#6366F1]/20 text-[#6366F1]" : "bg-gray-700 text-gray-500"
+                        )}>
+                            <Globe size={20} />
                         </div>
-                        <p className="text-sm text-gray-500 font-mono mt-1">{p.baseUrl}</p>
-                      </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                            <h3 className="text-xl font-bold text-white">{p.name}</h3>
+                            {p.enabled ? (
+                                <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Active</Badge>
+                            ) : (
+                                <Badge variant="outline" className="text-gray-500 border-gray-700">Disabled</Badge>
+                            )}
+                            </div>
+                            <p className="text-sm text-gray-500 font-mono mt-1">{p.baseUrl}</p>
+                        </div>
+                        </div>
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={isDiscovering[p.id] || !p.encryptedKeys?.length}
+                          onClick={() => handleDiscover(p.id, p.name)}
+                          className="border-gray-700 text-gray-400 hover:text-white rounded-xl h-9"
+                        >
+                          {isDiscovering[p.id] ? <RefreshCw size={14} className="animate-spin mr-2" /> : <Search size={14} className="mr-2" />}
+                          Discover Models
+                        </Button>
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
@@ -122,19 +146,26 @@ const Providers = () => {
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Provider Type</p>
-                        <Badge variant="secondary" className="bg-gray-700 text-gray-300 text-[10px]">
-                          {p.providerType || 'CUSTOM'}
-                        </Badge>
+                        <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Default Model</p>
+                        <div className="flex items-center gap-2 text-sm text-[#818cf8] font-mono">
+                            <Bot size={14} />
+                            {p.detectedModel || 'Auto-select'}
+                        </div>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Endpoint Path</p>
-                        <p className="text-xs text-gray-400 font-mono truncate">{p.modelPath || '/chat/completions'}</p>
+                        <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Health</p>
+                        <div className="flex items-center gap-2 text-xs">
+                            <div className={cn(
+                                "w-2 h-2 rounded-full",
+                                p.health?.status === 'online' ? "bg-green-500 shadow-[0_0_8px_#22c55e]" : "bg-gray-600"
+                            )} />
+                            <span className="text-gray-400 uppercase">{p.health?.status || 'Unknown'}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-gray-900/40 border-t md:border-t-0 md:border-l border-gray-700 p-4 flex md:flex-col justify-center gap-2 min-w-[120px]">
+                  <div className="bg-gray-900/40 border-t md:border-t-0 md:border-l border-gray-700 p-4 flex md:flex-col justify-center gap-2 min-w-[140px]">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -154,7 +185,7 @@ const Providers = () => {
                       onClick={() => window.open(p.baseUrl, '_blank')}
                     >
                       <ExternalLink size={16} className="mr-2" />
-                      Visit
+                      Visit API
                     </Button>
                     <div className="h-px bg-gray-700 my-1 hidden md:block" />
                     <Button
