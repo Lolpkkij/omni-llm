@@ -1,5 +1,5 @@
 import localforage from "localforage";
-import type { Provider } from "@/lib/providerConfig";
+import type { Provider } from "./providerConfig";
 
 const STORAGE_KEY = "omni_providers_config";
 
