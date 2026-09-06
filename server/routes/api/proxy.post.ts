@@ -1,7 +1,7 @@
 import { defineHandler } from "nitro";
 import { readBody, createError } from "nitro/h3";
 import CryptoJS from "crypto-js";
-import { getAllProviders } from "../../../utils/providerStore";
+import { getAllProviders } from "../../utils/providerStore";
 
 export default defineHandler(async (event) => {
   const { provider: providerId, model, messages, encryptedKey } = await readBody<{
@@ -11,7 +11,7 @@ export default defineHandler(async (event) => {
     encryptedKey: string;
   }>(event);
 
-  if (!providerId || !model || !messages || !encryptedKey) {
+  if (!providerId || !model || !messages) {
     throw createError({ statusCode: 400, statusMessage: "Missing required parameters" });
   }
 
@@ -21,62 +21,63 @@ export default defineHandler(async (event) => {
   if (!config) throw createError({ statusCode: 400, statusMessage: "Unknown provider" });
   if (!config.enabled) throw createError({ statusCode: 400, statusMessage: "Provider disabled" });
 
-  // Decrypt API key
+  // SSRF Prevention: Ensure URL is safe
+  const urlObj = new URL(config.baseUrl);
+  const forbidden = ["localhost", "127.0.0.1", "0.0.0.0"];
+  if (forbidden.includes(urlObj.hostname)) {
+    throw createError({ statusCode: 400, statusMessage: "Unsafe provider URL detected" });
+  }
+
+  // Key Rotation / Load Balancing
+  // We pick a random key from the available encrypted keys to balance usage
+  const keys = config.encryptedKeys || [];
+  if (keys.length === 0) {
+    throw createError({ statusCode: 500, statusMessage: "No API keys configured for this provider" });
+  }
+  
+  const chosenEncryptedKey = keys[Math.floor(Math.random() * keys.length)];
+
+  // Decrypt API key using server-side salt
   const runtimeConfig = useRuntimeConfig();
   const salt = (runtimeConfig as any).NITRO_ENCRYPTION_SALT || "";
-  const apiKey = CryptoJS.AES.decrypt(encryptedKey as string, salt).toString(CryptoJS.enc.Utf8);
+  const apiKey = CryptoJS.AES.decrypt(chosenEncryptedKey, salt).toString(CryptoJS.enc.Utf8);
+  
   if (!apiKey) throw createError({ statusCode: 401, statusMessage: "Failed to decrypt API key" });
 
   // Build endpoint URL
-  const endpoint = `${config.baseUrl.replace(/\\/+$/, "")}${config.modelPath}`;
+  const endpoint = `${config.baseUrl.replace(/\/+$/, "")}${config.modelPath || '/chat/completions'}`;
 
   // Build request headers
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = { 
+    "Content-Type": "application/json",
+    "Accept": "text/event-stream"
+  };
+  
   if (config.auth.type === "header") {
     headers[config.auth.keyName] = `${config.auth.prefix ?? ""}${apiKey}`;
   }
 
-  // Build request body
-  let body: any;
-  if (config.bodyTemplate) {
-    // eslint-disable-next-line no-new-func
-    const fn = new Function("params", `return (${config.bodyTemplate})(params)`);
-    body = fn({ model, messages, userKey: apiKey });
-  } else {
-    body = { model, messages };
-    if (config.auth.type === "body") {
-      body[config.auth.keyName] = `${config.auth.prefix ?? ""}${apiKey}`;
-    }
-  }
-
-  // Append query auth if required
-  let url = endpoint;
-  if (config.auth.type === "query") {
-    const param = encodeURIComponent(`${config.auth.prefix ?? ""}${apiKey}`);
-    const sep = url.includes("?") ? "&" : "?";
-    url = `${url}${sep}${config.auth.keyName}=${param}`;
-  }
-
-  const upstream = await fetch(url, {
+  // Forwarding request
+  const upstream = await fetch(endpoint, {
     method: "POST",
     headers,
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      model,
+      messages,
+      stream: true
+    }),
   });
 
   if (!upstream.ok) {
-    if (upstream.status === 401) throw createError({ statusCode: 401, statusMessage: "Invalid API key" });
-    if (upstream.status === 429) throw createError({ statusCode: 429, statusMessage: "Rate limit exceeded" });
-    throw createError({ statusCode: upstream.status, statusMessage: "Provider error" });
+    const err = await upstream.text();
+    throw createError({ statusCode: upstream.status, statusMessage: `Provider Error: ${err.substring(0, 100)}` });
   }
 
   // Stream response back to client
   const reader = upstream.body?.getReader();
   const stream = new ReadableStream({
     async start(controller) {
-      if (!reader) {
-        controller.close();
-        return;
-      }
+      if (!reader) { controller.close(); return; }
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
