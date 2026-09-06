@@ -5,23 +5,29 @@ import {
   Send, 
   Bot, 
   Plus, 
-  History,
+  History, 
   Trash2, 
   Sparkles, 
   Zap, 
   Settings2, 
-  X,
-  Sliders,
-  Database,
-  MessageSquare,
-  Edit2,
-  Check,
-  FileText,
-  Search,
-  ArrowDown,
-  Download,
-  Terminal,
-  User
+  X, 
+  Sliders, 
+  Database, 
+  MessageSquare, 
+  Edit2, 
+  Check, 
+  FileText, 
+  Search, 
+  ArrowDown, 
+  Download, 
+  Terminal, 
+  User, 
+  Loader2, 
+  AlertTriangle, 
+  Pencil, 
+  Trash, 
+  Edit3, 
+  AlertCircle
 } from 'lucide-react';
 import { useSessionStore, ChatSession } from '@/store/useSessionStore';
 import { useLogStore } from '@/store/useLogStore';
@@ -40,6 +46,9 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/components/ui/use-toast';
 
 const Chat = () => {
   const {
@@ -49,6 +58,8 @@ const Chat = () => {
     removeSession,
     setCurrentSession,
     addMessageToSession,
+    editMessageInSession,
+    deleteMessageInSession,
     renameSession,
     updateSession
   } = useSessionStore();
@@ -58,7 +69,8 @@ const Chat = () => {
   const { checkAccess } = useSubscriptionStore();
   const { addLog } = useLogStore();
   const { compactMode } = useSettingsStore();
-  
+  const { toast } = useToast();
+
   const [input, setInput] = useState('');
   const [sessionSearch, setSessionSearch] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -69,7 +81,14 @@ const Chat = () => {
   const [editTitle, setEditTitle] = useState('');
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [showSystemPrompt, setShowSystemPrompt] = useState(false);
-  
+  const [editMessageId, setEditMessageId] = useState<string | null>(null);
+  const [editMessageContent, setEditMessageContent] = useState('');
+  const [editMessageSessionId, setEditMessageSessionId] = useState<string | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
+  const [messageToEdit, setMessageToEdit] = useState<{id: string, content: string} | null>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentSession = sessions.find(s => s.id === currentSessionId);
 
@@ -115,7 +134,12 @@ const Chat = () => {
       `**System Persona**: ${currentSession.systemPrompt || 'N/A'}`,
       `**Model**: ${currentSession.modelId}`,
       "\n---\n",
-      ...currentSession.messages.map(m => `### ${m.role.toUpperCase()}\n\n${m.content}\n\n---`)
+      ...currentSession.messages
+        .filter(m => !m.isDeleted)
+        .map(m => {
+          const roleDisplay = m.role === 'user' ? 'User' : m.role === 'system' ? 'System' : 'Assistant';
+          return `### ${roleDisplay}\n\n${m.content}\n\n---`;
+        })
     ].join('\n\n');
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -142,12 +166,11 @@ const Chat = () => {
       let providerId = "";
       let model = finalModel;
 
-      // Construct context with system prompt if available
       const contextMessages = [];
       if (currentSession?.systemPrompt) {
         contextMessages.push({ role: 'system', content: currentSession.systemPrompt });
       }
-      contextMessages.push(...currentSession!.messages, { role: 'user', content: userText });
+      contextMessages.push(...currentSession!.messages.filter(m => !m.isDeleted), { role: 'user', content: userText });
 
       if (finalModel === AUTO_FREE || finalModel === AUTO_PREMIUM) {
         const routed = routeModel(
@@ -155,9 +178,9 @@ const Chat = () => {
           providers,
           contextMessages as any
         );
-        
+
         if (!routed) throw new Error(`No ${finalModel} models available.`);
-        
+
         providerId = routed.provider.id;
         model = routed.model.id;
         finalProvider = routed.provider.name;
@@ -193,22 +216,40 @@ const Chat = () => {
 
       const reader = response.body?.getReader();
       let currentText = '';
-      addMessageToSession(currentSessionId, { role: 'assistant', content: '' });
+      addMessageToSession(currentSessionId, { role: 'assistant', content: '', isLoading: true });
 
       while (reader) {
         const { done, value } = await reader.read();
         if (done) break;
+
         const chunk = new TextDecoder().decode(value);
         currentText += chunk;
-        
+
         const updatedSessions = [...useSessionStore.getState().sessions];
         const sessionIdx = updatedSessions.findIndex(s => s.id === currentSessionId);
         if (sessionIdx !== -1) {
           const msgs = [...updatedSessions[sessionIdx].messages];
-          msgs[msgs.length - 1].content = currentText;
-          updatedSessions[sessionIdx] = { ...updatedSessions[sessionIdx], messages: msgs };
-          useSessionStore.setState({ sessions: updatedSessions });
+          const assistantMsg = msgs[msgs.length - 1];
+          if (assistantMsg.role === 'assistant') {
+            msgs[msgs.length - 1] = { ...assistantMsg, content: currentText, isLoading: true };
+            updatedSessions[sessionIdx] = { ...updatedSessions[sessionIdx], messages: msgs };
+            useSessionStore.setState({ sessions: updatedSessions });
+          }
         }
+      }
+
+      // Update the last message to remove loading state
+      const finalMessages = [...currentSession!.messages];
+      const lastAssistantMsg = finalMessages[finalMessages.length - 1];
+      if (lastAssistantMsg.role === 'assistant') {
+        const updatedMessages = finalMessages.map(m =>
+          m.id === lastAssistantMsg.id ? { ...m, isLoading: false } : m
+        );
+        useSessionStore.setState({
+          sessions: sessions.map(s =>
+            s.id === currentSessionId ? { ...s, messages: updatedMessages } : s
+          )
+        });
       }
     } catch (e: any) {
       addLog({
@@ -217,19 +258,64 @@ const Chat = () => {
         model: finalModel,
         provider: finalProvider,
         status: 'error',
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
+        error: e.message
       });
+
+      // Update the last message to show error state
+      const finalMessages = [...currentSession!.messages];
+      const lastAssistantMsg = finalMessages[finalMessages.length - 1];
+      if (lastAssistantMsg.role === 'assistant') {
+        const updatedMessages = finalMessages.map(m =>
+          m.id === lastAssistantMsg.id ? { ...m, isLoading: false, error: e.message } : m
+        );
+        useSessionStore.setState({
+          sessions: sessions.map(s =>
+            s.id === currentSessionId ? { ...s, messages: updatedMessages } : s
+          )
+        });
+      }
       toast.error(e.message);
     } finally {
       setIsTyping(false);
     }
   };
 
-  const filteredSessions = sessions.filter(s => 
+  const filteredSessions = sessions.filter(s =>
     s.title.toLowerCase().includes(sessionSearch.toLowerCase())
   );
 
   const hasAnyProvider = providers.some(p => p.enabled && p.encryptedKeys?.length);
+
+  const handleEditMessage = (messageId: string, content: string) => {
+    if (editMessageSessionId && messageId) {
+      editMessageInSession(editMessageSessionId, messageId, content);
+      setShowEditDialog(false);
+      toast.success("Message updated successfully");
+    }
+  };
+
+  const handleDeleteMessage = () => {
+    if (messageToDelete && editMessageSessionId) {
+      deleteMessageInSession(editMessageSessionId, messageToDelete);
+      setShowDeleteDialog(false);
+      toast.success("Message deleted successfully");
+    }
+  };
+
+  const handleEditClick = (message: {id: string, content: string}) => {
+    setMessageToEdit(message);
+    setEditMessageContent(message.content);
+    setEditMessageSessionId(currentSessionId);
+    setEditMessageId(message.id);
+    setShowEditDialog(true);
+  };
+
+  const handleDeleteClick = (messageId: string) => {
+    setMessageToDelete(messageId);
+    setEditMessageSessionId(currentSessionId);
+    setShowDeleteDialog(true);
+  };
 
   return (
     <div className="flex h-full w-full animate-fadeIn relative">
@@ -238,7 +324,7 @@ const Chat = () => {
         showHistory ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-4 flex flex-col h-full">
-          <Button 
+          <Button
             onClick={() => createSession(AUTO_FREE)}
             className="w-full bg-[#6366F1] hover:bg-[#4f46e5] text-white rounded-xl mb-4 flex items-center justify-center gap-2 shadow-lg shadow-[#6366F1]/20"
           >
@@ -247,17 +333,17 @@ const Chat = () => {
 
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-            <input 
+            <input
               className="w-full bg-gray-900/50 border border-gray-800 rounded-lg pl-9 pr-3 py-2 text-xs text-white focus:ring-1 ring-[#6366F1] outline-none"
               placeholder="Search chats..."
               value={sessionSearch}
               onChange={e => setSessionSearch(e.target.value)}
             />
           </div>
-          
+
           <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
             {filteredSessions.map(s => (
-              <div 
+              <div
                 key={s.id}
                 className={cn(
                   "group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border border-transparent",
@@ -307,16 +393,16 @@ const Chat = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setShowSystemPrompt(!showSystemPrompt)}
-                className={cn(
-                    "text-xs font-bold rounded-xl h-9 px-3 gap-2",
-                    showSystemPrompt ? "bg-emerald-500/10 text-emerald-500" : "text-gray-500 hover:text-white"
-                )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSystemPrompt(!showSystemPrompt)}
+              className={cn(
+                "text-xs font-bold rounded-xl h-9 px-3 gap-2",
+                showSystemPrompt ? "bg-emerald-500/10 text-emerald-500" : "text-gray-500 hover:text-white"
+              )}
             >
-                <Terminal size={14} /> Persona
+              <Terminal size={14} /> Persona
             </Button>
             <Button variant="ghost" size="icon" onClick={exportMarkdown} className="h-9 w-9 text-gray-500 hover:text-white" title="Export as Markdown"><Download size={18} /></Button>
             <ModelSelector value={currentSession?.modelId || AUTO_FREE} onChange={handleModelChange} providers={providers} disabled={!hasAnyProvider} />
@@ -331,7 +417,7 @@ const Chat = () => {
                 <Label className="text-xs font-bold text-emerald-500 uppercase tracking-widest">System Instructions</Label>
                 <button onClick={() => setShowSystemPrompt(false)} className="text-gray-500 hover:text-white"><X size={14} /></button>
               </div>
-              <textarea 
+              <textarea
                 className="w-full bg-gray-900 border border-emerald-500/20 rounded-xl p-3 text-xs text-gray-300 outline-none focus:ring-1 ring-emerald-500/50 resize-none"
                 placeholder="Assign a role to the AI (e.g. 'You are a professional Python expert'). This instruction persists for this conversation."
                 rows={2}
@@ -357,7 +443,21 @@ const Chat = () => {
               </div>
             </div>
           )}
-          {currentSession?.messages.map((msg, i) => <MessageBubble key={i} role={msg.role} content={msg.content} />)}
+          {currentSession?.messages.map((msg, i) => (
+            <MessageBubble
+              key={msg.id}
+              role={msg.role}
+              content={msg.content}
+              id={msg.id}
+              isEditing={msg.isEditing}
+              isDeleted={msg.isDeleted}
+              timestamp={msg.timestamp}
+              isLoading={msg.isLoading}
+              error={msg.error}
+              onEdit={handleEditClick}
+              onDelete={handleDeleteClick}
+            />
+          ))}
           {isTyping && (
             <div className="flex justify-start mb-4 animate-in fade-in slide-in-from-left-2">
               <div className="bg-gray-800/50 text-gray-400 rounded-2xl px-5 py-3 rounded-tl-none text-xs border border-gray-700 flex items-center gap-3">
@@ -372,7 +472,7 @@ const Chat = () => {
           )}
 
           {showScrollBtn && (
-            <button 
+            <button
               onClick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })}
               className="fixed bottom-32 right-8 p-3 bg-[#6366F1] text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all z-30"
             >
@@ -387,7 +487,12 @@ const Chat = () => {
               rows={1}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
               placeholder={hasAnyProvider ? "Describe what you need..." : "Please configure an AI provider first"}
               className="w-full bg-gray-800/80 backdrop-blur-xl text-white rounded-2xl pl-5 pr-16 py-4 outline-none border border-gray-700 focus:border-[#6366F1] focus:ring-4 ring-[#6366F1]/10 transition-all resize-none shadow-2xl"
               disabled={!hasAnyProvider || isTyping}
@@ -402,6 +507,70 @@ const Chat = () => {
           </div>
         </div>
       </div>
+
+      {/* Edit Message Dialog */}
+      {showEditDialog && messageToEdit && (
+        <Dialog open={showEditDialog} onOpenChange={() => setShowEditDialog(false)}>
+          <DialogContent className="bg-gray-800 border-gray-700 text-white max-w-md rounded-3xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold">Edit Message</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Textarea
+                value={editMessageContent}
+                onChange={(e) => setEditMessageContent(e.target.value)}
+                className="bg-gray-900 border-gray-700 text-white min-h-[100px]"
+                placeholder="Edit your message..."
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowEditDialog(false)}
+                  className="bg-gray-700 hover:bg-gray-600"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => handleEditMessage(editMessageId || "", editMessageContent)}
+                  className="bg-[#6366F1] hover:bg-[#4f46e5]"
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Delete Message Dialog */}
+      {showDeleteDialog && (
+        <Dialog open={showDeleteDialog} onOpenChange={() => setShowDeleteDialog(false)}>
+          <DialogContent className="bg-gray-800 border-gray-700 text-white max-w-md rounded-3xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold">Delete Message</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-gray-400">Are you sure you want to delete this message? This action cannot be undone.</p>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteDialog(false)}
+                  className="bg-gray-700 hover:bg-gray-600"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteMessage}
+                  className="bg-red-500 hover:bg-red-600"
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {showSettings && (
         <div className="absolute right-6 top-24 w-80 bg-[#0a0b2e]/95 backdrop-blur-2xl border border-gray-700 rounded-3xl shadow-2xl z-50 animate-in slide-in-from-right-4 duration-300 flex flex-col max-h-[70vh]">
@@ -430,8 +599,8 @@ const Chat = () => {
               <Label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-4">Quick Templates</Label>
               <div className="grid grid-cols-1 gap-2">
                 {templates.map(t => (
-                  <button 
-                    key={t.id} 
+                  <button
+                    key={t.id}
                     onClick={() => { setInput(t.content); toast.success("Template applied"); }}
                     className="w-full flex items-center justify-between p-3 bg-gray-900/50 hover:bg-[#6366F1]/10 border border-gray-800 rounded-xl text-left transition-all group"
                   >
