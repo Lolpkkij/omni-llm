@@ -1,3 +1,4 @@
+' and adding missing closing quotes.">
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -38,20 +39,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useProviderStore } from '@/store/useProviderStore';
-import { useSubscriptionStore } from '@/store/useSubscriptionStore>;
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import ModelSelector from '@/components/ModelSelector';
 import SubscriptionModal from '@/components/SubscriptionModal';
 import { routeModel, AUTO_FREE, AUTO_PREMIUM } from '@/lib/modelRouter';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider>;
-import { Switch } from '@/components/ui/switch>;
-import { cn } from '@/lib/utils>;
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog>;
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea>;
 
 // Import our new modular components
-import { SessionList } from '@/components/chat/SessionList>;
-import { ChatHeader } from '@/components/chat/ChatHeader>;
+import { SessionList } from '@/components/chat/SessionList';
+import { ChatHeader } from '@/components/chat/ChatHeader';
 import { MessageList } from '@/components/chat/MessageList>;
 import { MessageInput } from '@/components/chat/MessageInput>;
 import { SystemPromptEditor } from '@/components/chat/SystemPromptEditor>;
