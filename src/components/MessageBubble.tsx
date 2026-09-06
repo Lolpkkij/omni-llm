@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Check, Copy, Edit, Trash2, Loader2, CheckCircle2, AlertTriangle, X } from "lucide-react";
+import { Check, Copy, Edit, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function MessageBubble({
@@ -28,13 +28,12 @@ export default function MessageBubble({
   timestamp?: number;
   isLoading?: boolean;
   error?: string;
-  onEdit?: (messageId: string) => void;
+  onEdit?: (message: { id: string; content: string }) => void;
   onDelete?: (messageId: string) => void;
 }) {
   const isUser = role === "user";
   const isSystem = role === "system";
   const [copied, setCopied] = useState(false);
-  const [isEditingState, setIsEditingState] = useState(isEditing || false);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
@@ -86,7 +85,7 @@ export default function MessageBubble({
               )}
 
               <div className="relative">
-                {isEditingState && (
+                {isEditing && (
                   <div className="absolute -top-10 right-0 bg-gray-900 text-white text-xs px-2 py-1 rounded-lg border border-gray-700">
                     Editing...
                   </div>
@@ -134,10 +133,10 @@ export default function MessageBubble({
                   </div>
                 )}
 
-                {isUser && !isEditingState && (
+                {isUser && !isEditing && (
                   <div className="absolute top-2 right-2 flex gap-1">
                     <button
-                      onClick={() => onEdit?.(id)}
+                      onClick={() => onEdit?.({ id, content })}
                       className="p-1 bg-gray-900/50 rounded-full hover:bg-gray-800 transition-colors"
                       title="Edit message"
                     >
@@ -152,7 +151,8 @@ export default function MessageBubble({
                     </button>
                   </div>
                 )}
-              </>
+              </div>
+            </>
           )}
         </div>
       )}
