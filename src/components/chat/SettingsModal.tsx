@@ -11,12 +11,14 @@ import {
   Button, 
   Switch, 
   Label, 
+} from '@/components/ui/button';
+import { 
   Select, 
   SelectContent, 
   SelectItem, 
   SelectTrigger, 
   SelectValue 
-} from '@/components/ui/button'; // Note: Actually from '@/components/ui/button' is wrong, but we'll fix in reality
+} from '@/components/ui/select';
 import { 
   Settings as SettingsIcon, 
   Shield, 

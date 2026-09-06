@@ -2,6 +2,7 @@
 
 import React from 'react';
 import MessageBubble from '@/components/MessageBubble';
+import { ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MessageListProps {
@@ -67,7 +68,11 @@ export const MessageList = ({
 
       {showScrollBtn && (
         <button
-          onClick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })}
+          onClick={() => {
+            if (scrollRef.current) {
+              scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+            }
+          }}
           className="fixed bottom-32 right-8 p-3 bg-[#6366F1] text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all z-30"
         >
           <ArrowDown size={20} />
