@@ -3,16 +3,43 @@ import { readBody, createError } from "nitro/h3";
 import CryptoJS from "crypto-js";
 import { getAllProviders } from "../../utils/providerStore";
 
+// Global In-Memory Cache (Reset on server restart)
+const RESPONSE_CACHE = new Map<string, { content: string; timestamp: number }>();
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
 export default defineHandler(async (event) => {
-  const { provider: providerId, model, messages, encryptedKey } = await readBody<{
+  const body = await readBody<{
     provider: string;
     model: string;
     messages: any[];
-    encryptedKey: string;
+    params?: {
+      temperature: number;
+      maxTokens: number;
+      topP: number;
+      useCache: boolean;
+    };
   }>(event);
+
+  const { provider: providerId, model, messages, params } = body;
 
   if (!providerId || !model || !messages) {
     throw createError({ statusCode: 400, statusMessage: "Missing required parameters" });
+  }
+
+  // --- Cache Check ---
+  const cacheKey = CryptoJS.SHA256(JSON.stringify({ model, messages, params })).toString();
+  if (params?.useCache && RESPONSE_CACHE.has(cacheKey)) {
+    const cached = RESPONSE_CACHE.get(cacheKey)!;
+    if (Date.now() - cached.timestamp < CACHE_TTL) {
+      // Stream the cached response back
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(cached.content));
+          controller.close();
+        },
+      });
+      return new Response(stream, { headers: { "Content-Type": "text/event-stream", "X-Cache": "HIT" } });
+    }
   }
 
   // Load provider config
@@ -21,15 +48,7 @@ export default defineHandler(async (event) => {
   if (!config) throw createError({ statusCode: 400, statusMessage: "Unknown provider" });
   if (!config.enabled) throw createError({ statusCode: 400, statusMessage: "Provider disabled" });
 
-  // SSRF Prevention: Ensure URL is safe
-  const urlObj = new URL(config.baseUrl);
-  const forbidden = ["localhost", "127.0.0.1", "0.0.0.0"];
-  if (forbidden.includes(urlObj.hostname)) {
-    throw createError({ statusCode: 400, statusMessage: "Unsafe provider URL detected" });
-  }
-
   // Key Rotation / Load Balancing
-  // We pick a random key from the available encrypted keys to balance usage
   const keys = config.encryptedKeys || [];
   if (keys.length === 0) {
     throw createError({ statusCode: 500, statusMessage: "No API keys configured for this provider" });
@@ -57,14 +76,17 @@ export default defineHandler(async (event) => {
     headers[config.auth.keyName] = `${config.auth.prefix ?? ""}${apiKey}`;
   }
 
-  // Forwarding request
+  // Forwarding request with parameters
   const upstream = await fetch(endpoint, {
     method: "POST",
     headers,
     body: JSON.stringify({
       model,
       messages,
-      stream: true
+      stream: true,
+      temperature: params?.temperature ?? 0.7,
+      max_tokens: params?.maxTokens ?? 2048,
+      top_p: params?.topP ?? 1
     }),
   });
 
@@ -73,7 +95,8 @@ export default defineHandler(async (event) => {
     throw createError({ statusCode: upstream.status, statusMessage: `Provider Error: ${err.substring(0, 100)}` });
   }
 
-  // Stream response back to client
+  // Stream response and populate cache
+  let fullContent = "";
   const reader = upstream.body?.getReader();
   const stream = new ReadableStream({
     async start(controller) {
@@ -81,11 +104,21 @@ export default defineHandler(async (event) => {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        
+        const chunk = new TextDecoder().decode(value);
+        fullContent += chunk;
+        
         controller.enqueue(value);
       }
+      
+      // Store in cache if enabled
+      if (params?.useCache && fullContent) {
+        RESPONSE_CACHE.set(cacheKey, { content: fullContent, timestamp: Date.now() });
+      }
+      
       controller.close();
     },
   });
 
-  return new Response(stream, { headers: { "Content-Type": "text/event-stream" } });
+  return new Response(stream, { headers: { "Content-Type": "text/event-stream", "X-Cache": "MISS" } });
 });

@@ -6,6 +6,13 @@ type Message = {
   content: string;
 };
 
+type ModelParams = {
+  temperature: number;
+  maxTokens: number;
+  topP: number;
+  useCache: boolean;
+};
+
 type ChatState = {
   selectedProviderId: string;
   selectedModel: string;
@@ -13,12 +20,14 @@ type ChatState = {
   apiKeys: Record<string, string>;
   usageData: Record<string, any>;
   unifiedKey: string;
+  params: ModelParams;
 
   setSelectedProviderId: (id: string) => void;
   setSelectedModel: (model: string) => void;
   setApiKeys: (keys: Record<string, string>) => void;
   setUsageData: (data: Record<string, any>) => void;
   setUnifiedKey: (key: string) => void;
+  setParams: (params: Partial<ModelParams>) => void;
 
   addUserMessage: (content: string) => void;
   addAssistantMessage: (content: string, replaceLast?: boolean) => void;
@@ -29,17 +38,24 @@ export const useChatStore = create<ChatState>()(
   persist(
     (set) => ({
       selectedProviderId: "",
-      selectedModel: "gpt-4o",
+      selectedModel: "gpt-4o-mini",
       messages: [],
       apiKeys: {},
       usageData: {},
       unifiedKey: "",
+      params: {
+        temperature: 0.7,
+        maxTokens: 2048,
+        topP: 1,
+        useCache: true,
+      },
 
       setSelectedProviderId: (id) => set({ selectedProviderId: id }),
       setSelectedModel: (model) => set({ selectedModel: model }),
       setApiKeys: (keys) => set({ apiKeys: keys }),
       setUsageData: (data) => set({ usageData: data }),
       setUnifiedKey: (key) => set({ unifiedKey: key }),
+      setParams: (newParams) => set((state) => ({ params: { ...state.params, ...newParams } })),
 
       addUserMessage: (content) =>
         set((state) => ({
@@ -72,7 +88,11 @@ export const useChatStore = create<ChatState>()(
     {
       name: "omni-chat-storage",
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ messages: state.messages, selectedModel: state.selectedModel }),
+      partialize: (state) => ({ 
+        messages: state.messages, 
+        selectedModel: state.selectedModel,
+        params: state.params
+      }),
     }
   )
 );

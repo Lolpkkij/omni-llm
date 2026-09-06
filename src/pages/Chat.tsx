@@ -1,5 +1,17 @@
+"use client";
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, RotateCcw, Sparkles, Zap } from 'lucide-react';
+import { 
+  Send, 
+  Bot, 
+  RotateCcw, 
+  Sparkles, 
+  Zap, 
+  Settings2, 
+  X,
+  Sliders,
+  Database
+} from 'lucide-react';
 import { useChatStore } from '@/store/useChatStore';
 import { useLogStore } from '@/store/useLogStore';
 import MessageBubble from '@/components/MessageBubble';
@@ -11,14 +23,19 @@ import ModelSelector from '@/components/ModelSelector';
 import SubscriptionModal from '@/components/SubscriptionModal';
 import { routeModel, AUTO_FREE, AUTO_PREMIUM } from '@/lib/modelRouter';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 
 const Chat = () => {
   const {
     selectedProviderId,
     selectedModel,
     messages,
+    params,
     setSelectedModel,
     setSelectedProviderId,
+    setParams,
     addUserMessage,
     addAssistantMessage,
     clearChat,
@@ -31,6 +48,7 @@ const Chat = () => {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const [modelMode, setModelMode] = useState(selectedModel || AUTO_FREE);
@@ -58,7 +76,7 @@ const Chat = () => {
   };
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isTyping) return;
 
     const userText = input;
     setInput('');
@@ -102,7 +120,7 @@ const Chat = () => {
           provider: providerId,
           model: model,
           messages: [...messages, { role: 'user', content: userText }],
-          encryptedKey: 'auto-resolve',
+          params: params,
         }),
       });
 
@@ -147,7 +165,7 @@ const Chat = () => {
   const hasAnyProvider = providers.some(p => p.enabled && p.encryptedKeys?.length);
 
   return (
-    <div className="flex flex-col h-full max-w-4xl mx-auto w-full p-4 md:p-6 animate-fadeIn">
+    <div className="flex flex-col h-full max-w-4xl mx-auto w-full p-4 md:p-6 animate-fadeIn relative">
       <div className="flex flex-col md:flex-row items-center justify-between mb-6 bg-gray-800/40 p-4 rounded-3xl border border-gray-700 shadow-xl">
         <div className="flex items-center gap-3 mb-4 md:mb-0">
           <div className="p-2 bg-[#6366F1]/20 text-[#6366F1] rounded-xl">
@@ -157,14 +175,27 @@ const Chat = () => {
             <span className="font-bold text-white block">Chat Studio</span>
             <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Interactive Sandbox</span>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={clearChat} 
-            className="ml-2 text-gray-600 hover:text-red-400 h-8 w-8 transition-colors"
-          >
-            <RotateCcw size={16} />
-          </Button>
+          <div className="flex items-center gap-1 ml-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={clearChat} 
+              className="text-gray-600 hover:text-red-400 h-8 w-8 transition-colors"
+            >
+              <RotateCcw size={16} />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setShowSettings(!showSettings)}
+              className={cn(
+                "h-8 w-8 transition-colors",
+                showSettings ? "text-[#6366F1] bg-[#6366F1]/10" : "text-gray-600 hover:text-white"
+              )}
+            >
+              <Settings2 size={16} />
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
@@ -250,6 +281,66 @@ const Chat = () => {
           <Send size={20} />
         </button>
       </div>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="absolute right-6 top-24 w-80 bg-[#0a0b2e]/95 backdrop-blur-xl border border-gray-700 rounded-3xl shadow-2xl z-50 animate-in slide-in-from-right-4 duration-300">
+          <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-white font-bold">
+              <Sliders size={18} className="text-[#6366F1]" />
+              Advanced Tuning
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => setShowSettings(false)} className="text-gray-500 hover:text-white">
+              <X size={18} />
+            </Button>
+          </div>
+          <div className="p-6 space-y-8">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <Label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Temperature</Label>
+                <span className="text-xs font-mono text-[#6366F1]">{params.temperature}</span>
+              </div>
+              <Slider 
+                value={[params.temperature]} 
+                min={0} 
+                max={2} 
+                step={0.1} 
+                onValueChange={([v]) => setParams({ temperature: v })}
+                className="cursor-pointer"
+              />
+              <p className="text-[10px] text-gray-600 leading-tight">Controls randomness: 0 is deterministic, 2 is creative.</p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <Label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Max Output</Label>
+                <span className="text-xs font-mono text-[#6366F1]">{params.maxTokens}</span>
+              </div>
+              <Slider 
+                value={[params.maxTokens]} 
+                min={256} 
+                max={4096} 
+                step={256} 
+                onValueChange={([v]) => setParams({ maxTokens: v })}
+              />
+              <p className="text-[10px] text-gray-600 leading-tight">Limits the maximum length of the generated response.</p>
+            </div>
+
+            <div className="pt-4 border-t border-gray-700 flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-xs text-gray-300 font-bold flex items-center gap-2">
+                  <Database size={14} className="text-emerald-500" /> Response Cache
+                </Label>
+                <p className="text-[10px] text-gray-600">Save tokens for identical prompts</p>
+              </div>
+              <Switch 
+                checked={params.useCache} 
+                onCheckedChange={(checked) => setParams({ useCache: checked })}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <SubscriptionModal
         open={showSubscriptionModal}
