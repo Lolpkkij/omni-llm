@@ -1,3 +1,13 @@
+"use client";
+
+import React, { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Check, Copy } from "lucide-react";
+import { cn } from "@/lib/utils";
+
 export default function MessageBubble({
   role,
   content,
@@ -7,7 +17,7 @@ export default function MessageBubble({
 }) {
   const isUser = role === "user";
   const isSystem = role === "system";
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
