@@ -10,11 +10,12 @@ export default defineHandler(async (event) => {
   }>(event);
 
   if (!providerId || !encryptedKey) {
-    throw createError({ statusCode: 400, statusMessage: "Missing parameters" });
+    throw createError({ statusCode: 400, statusMessage: "Missing providerId or encryptedKey" });
   }
 
   const allProviders = await getAllProviders();
   const provider = allProviders.find(p => p.id === providerId);
+
   if (!provider) throw createError({ statusCode: 404, statusMessage: "Provider not found" });
 
   const config = useRuntimeConfig();
