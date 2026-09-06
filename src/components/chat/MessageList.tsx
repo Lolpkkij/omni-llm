@@ -2,14 +2,14 @@
 
 import React from 'react';
 import MessageBubble from '@/components/MessageBubble';
-import { ArrowDown } from 'lucide-react';
+import { ArrowDown, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MessageListProps {
   messages: any[];
   isTyping: boolean;
   showScrollBtn: boolean;
-  scrollRef: React.RefObject<HTMLDivElement>;
+  scrollRef: React.RefObject<HTMLDivElement | null>;
   handleEditClick: (message: {id: string, content: string}) => void;
   handleDeleteClick: (messageId: string) => void;
 }
@@ -23,10 +23,7 @@ export const MessageList = ({
   handleDeleteClick
 }: MessageListProps) => {
   return (
-    <div ref={scrollRef} className={cn(
-        "flex-1 overflow-y-auto p-4 md:p-8 space-y-6 custom-scrollbar relative",
-        /* compactMode && "space-y-2 p-4" */ 
-    )}>
+    <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 custom-scrollbar relative">
       {!messages.length && (
         <div className="h-full flex flex-col items-center justify-center text-gray-500 space-y-6">
           <div className="w-24 h-24 bg-gray-900/50 rounded-3xl flex items-center justify-center border border-gray-800 shadow-2xl">
@@ -44,7 +41,6 @@ export const MessageList = ({
           role={msg.role}
           content={msg.content}
           id={msg.id}
-          isEditing={msg.isEditing}
           isDeleted={msg.isDeleted}
           timestamp={msg.timestamp}
           isLoading={msg.isLoading}

@@ -2,13 +2,11 @@
 
 import React from 'react';
 import { Send } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface MessageInputProps {
   input: string;
-  setInput: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  setInput: (val: string) => void;
   handleSend: () => void;
   hasAnyProvider: boolean;
   isTyping: boolean;
