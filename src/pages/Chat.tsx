@@ -19,11 +19,14 @@ import {
   FileText,
   Search,
   ArrowDown,
-  Download
+  Download,
+  Terminal,
+  User
 } from 'lucide-react';
 import { useSessionStore, ChatSession } from '@/store/useSessionStore';
 import { useLogStore } from '@/store/useLogStore';
 import { usePromptStore } from '@/store/usePromptStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import MessageBubble from '@/components/MessageBubble';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,6 +57,7 @@ const Chat = () => {
   const { templates } = usePromptStore();
   const { checkAccess } = useSubscriptionStore();
   const { addLog } = useLogStore();
+  const { compactMode } = useSettingsStore();
   
   const [input, setInput] = useState('');
   const [sessionSearch, setSessionSearch] = useState('');
@@ -64,6 +68,7 @@ const Chat = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [showSystemPrompt, setShowSystemPrompt] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentSession = sessions.find(s => s.id === currentSessionId);
@@ -105,9 +110,13 @@ const Chat = () => {
 
   const exportMarkdown = () => {
     if (!currentSession) return;
-    const content = currentSession.messages
-      .map(m => `### ${m.role.toUpperCase()}\n\n${m.content}\n\n---`)
-      .join('\n\n');
+    const content = [
+      `# ${currentSession.title}`,
+      `**System Persona**: ${currentSession.systemPrompt || 'N/A'}`,
+      `**Model**: ${currentSession.modelId}`,
+      "\n---\n",
+      ...currentSession.messages.map(m => `### ${m.role.toUpperCase()}\n\n${m.content}\n\n---`)
+    ].join('\n\n');
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -133,11 +142,18 @@ const Chat = () => {
       let providerId = "";
       let model = finalModel;
 
+      // Construct context with system prompt if available
+      const contextMessages = [];
+      if (currentSession?.systemPrompt) {
+        contextMessages.push({ role: 'system', content: currentSession.systemPrompt });
+      }
+      contextMessages.push(...currentSession!.messages, { role: 'user', content: userText });
+
       if (finalModel === AUTO_FREE || finalModel === AUTO_PREMIUM) {
         const routed = routeModel(
           finalModel as "auto-free" | "auto-premium",
           providers,
-          [...currentSession!.messages, { role: 'user', content: userText }]
+          contextMessages as any
         );
         
         if (!routed) throw new Error(`No ${finalModel} models available.`);
@@ -159,7 +175,7 @@ const Chat = () => {
         body: JSON.stringify({
           provider: providerId,
           model: model,
-          messages: [...currentSession!.messages, { role: 'user', content: userText }],
+          messages: contextMessages,
           params: currentSession?.settings,
         }),
       });
@@ -284,20 +300,52 @@ const Chat = () => {
             <div className="hidden sm:flex items-center gap-3">
               <div className="p-2 bg-[#6366F1]/10 text-[#6366F1] rounded-xl"><Bot size={18} /></div>
               <div>
-                <span className="font-bold text-sm text-white block">{currentSession?.title || "Chat Studio"}</span>
+                <span className="font-bold text-sm text-white block truncate max-w-[200px]">{currentSession?.title || "Chat Studio"}</span>
                 <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Encrypted Session</span>
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowSystemPrompt(!showSystemPrompt)}
+                className={cn(
+                    "text-xs font-bold rounded-xl h-9 px-3 gap-2",
+                    showSystemPrompt ? "bg-emerald-500/10 text-emerald-500" : "text-gray-500 hover:text-white"
+                )}
+            >
+                <Terminal size={14} /> Persona
+            </Button>
             <Button variant="ghost" size="icon" onClick={exportMarkdown} className="h-9 w-9 text-gray-500 hover:text-white" title="Export as Markdown"><Download size={18} /></Button>
             <ModelSelector value={currentSession?.modelId || AUTO_FREE} onChange={handleModelChange} providers={providers} disabled={!hasAnyProvider} />
             <Button variant="ghost" size="icon" onClick={() => setShowSettings(!showSettings)} className={cn("h-9 w-9", showSettings ? "text-[#6366F1] bg-[#6366F1]/10" : "text-gray-500 hover:text-white")}><Settings2 size={18} /></Button>
           </div>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 custom-scrollbar relative">
+        {showSystemPrompt && (
+          <div className="p-4 border-b border-gray-800 bg-emerald-500/5 animate-in slide-in-from-top-2">
+            <div className="max-w-4xl mx-auto space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-emerald-500 uppercase tracking-widest">System Instructions</Label>
+                <button onClick={() => setShowSystemPrompt(false)} className="text-gray-500 hover:text-white"><X size={14} /></button>
+              </div>
+              <textarea 
+                className="w-full bg-gray-900 border border-emerald-500/20 rounded-xl p-3 text-xs text-gray-300 outline-none focus:ring-1 ring-emerald-500/50 resize-none"
+                placeholder="Assign a role to the AI (e.g. 'You are a professional Python expert'). This instruction persists for this conversation."
+                rows={2}
+                value={currentSession?.systemPrompt || ''}
+                onChange={(e) => currentSessionId && updateSession(currentSessionId, { systemPrompt: e.target.value })}
+              />
+            </div>
+          </div>
+        )}
+
+        <div ref={scrollRef} className={cn(
+            "flex-1 overflow-y-auto p-4 md:p-8 space-y-6 custom-scrollbar relative",
+            compactMode && "space-y-2 p-4"
+        )}>
           {!currentSession?.messages.length && (
             <div className="h-full flex flex-col items-center justify-center text-gray-500 space-y-6">
               <div className="w-24 h-24 bg-gray-900/50 rounded-3xl flex items-center justify-center border border-gray-800 shadow-2xl">

@@ -14,7 +14,8 @@ import {
   ChevronRight,
   LayoutGrid,
   FileText,
-  BarChart3
+  BarChart3,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -62,7 +63,7 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed lg:static inset-y-0 left-0 z-50 w-72 bg-[#0a0b2e] border-r border-gray-800/50 transition-transform duration-300 ease-in-out flex flex-col shadow-2xl",
+        "fixed lg:static inset-y-0 left-0 z-50 w-72 bg-[#0a0b2e] border-r border-gray-800/50 transition-transform duration-300 ease-in-out flex flex-col shadow-2xl h-screen overflow-y-auto",
         isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
         <div className="p-8 flex items-center gap-4">
@@ -106,7 +107,19 @@ export default function Sidebar() {
           })}
         </nav>
 
-        <div className="p-6">
+        <div className="p-6 space-y-4">
+          <Link
+            to="/settings"
+            onClick={() => setIsOpen(false)}
+            className={cn(
+              "flex items-center gap-3 px-4 py-3 rounded-2xl transition-all",
+              location.pathname === "/settings" ? "bg-gray-800 text-white" : "text-gray-500 hover:bg-gray-800/50 hover:text-gray-300"
+            )}
+          >
+            <SettingsIcon size={18} />
+            <span className="font-semibold text-sm">Settings</span>
+          </Link>
+
           <div className="bg-gradient-to-br from-gray-800/40 to-gray-900/40 rounded-3xl p-5 border border-gray-800">
             <p className="text-xs text-gray-400 font-medium mb-3">Gateway Status</p>
             <div className="flex items-center gap-2">

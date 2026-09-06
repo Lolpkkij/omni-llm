@@ -15,16 +15,20 @@ import Playground from "./pages/Playground";
 import PromptLibrary from "./pages/PromptLibrary";
 import DeveloperGateway from "./pages/DeveloperGateway";
 import Analytics from "./pages/Analytics";
+import Settings from "./pages/Settings";
 import Sidebar from "./components/Sidebar";
 import { useUnifiedKeyStore } from "@/store/useUnifiedKeyStore";
+import { useProviderStore } from "@/store/useProviderStore";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   const { loadKey } = useUnifiedKeyStore();
+  const { load: loadProviders } = useProviderStore();
 
   useEffect(() => {
     loadKey();
+    loadProviders();
   }, []);
 
   return (
@@ -47,6 +51,7 @@ const App = () => {
                 <Route path="/providers" element={<Providers />} />
                 <Route path="/developer" element={<DeveloperGateway />} />
                 <Route path="/local-hub" element={<LocalHub />} />
+                <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>

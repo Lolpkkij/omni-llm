@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
 export type ChatMessage = {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system";
   content: string;
   timestamp: number;
 };
@@ -11,6 +11,7 @@ export type ChatSession = {
   id: string;
   title: string;
   messages: ChatMessage[];
+  systemPrompt?: string;
   modelId: string;
   settings: {
     temperature: number;
@@ -23,7 +24,7 @@ interface SessionState {
   sessions: ChatSession[];
   currentSessionId: string | null;
   
-  createSession: (modelId: string) => string;
+  createSession: (modelId: string, systemPrompt?: string) => string;
   removeSession: (id: string) => void;
   setCurrentSession: (id: string) => void;
   updateSession: (id: string, updates: Partial<ChatSession>) => void;
@@ -38,12 +39,13 @@ export const useSessionStore = create<SessionState>()(
       sessions: [],
       currentSessionId: null,
 
-      createSession: (modelId) => {
+      createSession: (modelId, systemPrompt) => {
         const id = crypto.randomUUID();
         const newSession: ChatSession = {
           id,
           title: "New Conversation",
           messages: [],
+          systemPrompt: systemPrompt || "",
           modelId,
           settings: {
             temperature: 0.7,
@@ -61,7 +63,7 @@ export const useSessionStore = create<SessionState>()(
       removeSession: (id) => {
         set((state) => ({
           sessions: state.sessions.filter((s) => s.id !== id),
-          currentSessionId: state.currentSessionId === id ? (state.sessions[1]?.id || null) : state.currentSessionId,
+          currentSessionId: state.currentSessionId === id ? (get().sessions[1]?.id || null) : state.currentSessionId,
         }));
       },
 
@@ -83,7 +85,6 @@ export const useSessionStore = create<SessionState>()(
                 ...s.messages,
                 { ...message, timestamp: Date.now() },
               ];
-              // Automatically title the session if it's the first message
               let title = s.title;
               if (s.messages.length === 0 && message.role === 'user') {
                 title = message.content.substring(0, 30) + (message.content.length > 30 ? "..." : "");
