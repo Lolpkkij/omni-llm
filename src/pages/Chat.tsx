@@ -36,7 +36,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import MessageBubble from '@/components/MessageBubble';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import toast from 'sonner';
+import { toast } from 'sonner';
 import { useProviderStore } from '@/store/useProviderStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import ModelSelector from '@/components/ModelSelector';
@@ -75,7 +75,7 @@ const Chat = () => {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [editingId, setEditId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [showSystemPrompt, setShowSystemPrompt] = useState(false);
