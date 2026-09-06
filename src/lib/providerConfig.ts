@@ -11,11 +11,20 @@ export const ProviderUsageSchema = z.object({
 
 export type ProviderUsage = z.infer<typeof ProviderUsageSchema>;
 
+export const ProviderHealthSchema = z.object({
+  status: z.enum(["online", "offline", "unknown"]),
+  latency: z.number().optional(),
+  lastChecked: z.number().optional(),
+  error: z.string().optional(),
+});
+
+export type ProviderHealth = z.infer<typeof ProviderHealthSchema>;
+
 export const ProviderSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1),
-  baseUrl: z.string().url().refine((val) => val.startsWith("https://"), {
-    message: "Base URL must use HTTPS for security",
+  baseUrl: z.string().url().refine((val) => val.startsWith("https://") || val.includes("localhost") || val.includes("127.0.0.1"), {
+    message: "Base URL must be valid",
   }),
   auth: z.object({
     type: z.enum(["header", "query", "body"]),
@@ -23,30 +32,29 @@ export const ProviderSchema = z.object({
     prefix: z.string().optional(),
   }),
   encryptedKeys: z.array(z.string()),
-  providerType: z.enum(["openai", "anthropic", "gemini", "custom"]).optional(),
+  providerType: z.enum(["openai", "anthropic", "gemini", "groq", "mistral", "custom"]).optional(),
   usage: ProviderUsageSchema.optional(),
+  health: ProviderHealthSchema.optional(),
   detectedModel: z.string().optional(),
   enabled: z.boolean().default(true),
   order: z.number().int().optional(),
-  /** Optional custom path for model‑list endpoint (e.g. "/v1/models") */
   modelPath: z.string().optional(),
 });
 
 export type Provider = z.infer<typeof ProviderSchema>;
 
 /**
- * Validates that a URL does not point to local or private network addresses to prevent SSRF.
+ * Validates that a URL does not point to sensitive local addresses unless explicitly allowed.
  */
 export function isSafeUrl(urlStr: string): boolean {
   try {
     const url = new URL(urlStr);
-    if (url.protocol !== "https:") return false;
-    
     const hostname = url.hostname;
-    // Block localhost, loopback, and private IP ranges
+    
+    // Explicitly allow common local dev addresses if the user adds them
+    if (["localhost", "127.0.0.1"].includes(hostname)) return true;
+
     const forbiddenPatterns = [
-      "localhost",
-      "127.0.0.1",
       "0.0.0.0",
       /^10\./,
       /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
