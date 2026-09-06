@@ -106,6 +106,8 @@ export const ChatHeader = ({
   providers,
   checkAccess
 }: ChatHeaderProps) => {
+  const updateSession = useSessionStore(state => state.updateSession);
+
   return (
     <>
       <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900/40 backdrop-blur-md">
@@ -155,7 +157,11 @@ export const ChatHeader = ({
               placeholder="Assign a role to the AI (e.g. 'You are a professional Python expert'). This instruction persists for this conversation."
               rows={2}
               value={currentSession?.systemPrompt || ''}
-              onChange={(e) => currentSessionId && /* updateSession logic */ }
+              onChange={(e) => {
+                if (currentSessionId) {
+                  updateSession(currentSessionId, { systemPrompt: e.target.value });
+                }
+              }}
             />
           </div>
         </div>
