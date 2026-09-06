@@ -11,6 +11,7 @@ export type RequestLog = {
   status: 'success' | 'error' | 'pending';
   duration?: number;
   tokens?: number;
+  error?: string;
 };
 
 interface LogState {
