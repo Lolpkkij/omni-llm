@@ -25,7 +25,7 @@ export default defineHandler(async (event) => {
 
   const startTime = Date.now();
   const endpoint = `${provider.baseUrl.replace(/\/+$/, "")}${provider.modelPath || '/chat/completions'}`;
-  
+
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (provider.auth.type === "header") {
@@ -38,7 +38,7 @@ export default defineHandler(async (event) => {
     const timeout = setTimeout(() => controller.abort(), 5000);
 
     const probeUrl = provider.baseUrl.replace(/\/+$/, "") + (provider.providerType === 'anthropic' ? '/v1/messages' : '/v1/models');
-    
+
     const res = await fetch(probeUrl, {
       method: "GET",
       headers,
