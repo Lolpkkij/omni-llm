@@ -51,14 +51,12 @@ export const useSessionStore = create<SessionState>()(
       currentSessionId: null,
       encryptionSalt: generateSalt(),
 
-      // Enhanced encryption for session data
       encryptSessionData: (data) => {
         const salt = get().encryptionSalt;
         const encrypted = encryptData(JSON.stringify(data), salt);
         return JSON.stringify(encrypted);
       },
 
-      // Enhanced decryption for session data
       decryptSessionData: (encryptedData) => {
         try {
           const parsed = JSON.parse(encryptedData);
@@ -85,11 +83,8 @@ export const useSessionStore = create<SessionState>()(
           updatedAt: Date.now(),
         };
 
-        // Encrypt the session data before storing
-        const encryptedSession = get().encryptSessionData(newSession);
-
         set((state) => ({
-          sessions: [encryptedSession, ...state.sessions],
+          sessions: [newSession, ...state.sessions],
           currentSessionId: id,
         }));
         return id;
@@ -171,9 +166,7 @@ export const useSessionStore = create<SessionState>()(
         }));
       },
 
-      // Enhanced clearAllSessions with secure deletion
       clearAllSessions: () => {
-        // Clear the encryption salt to prevent decryption of old data
         set({ encryptionSalt: generateSalt() });
         set({ sessions: [], currentSessionId: null });
       },
@@ -181,24 +174,10 @@ export const useSessionStore = create<SessionState>()(
     {
       name: "omni-sessions-v1",
       storage: createJSONStorage(() => localStorage),
-      // Enhanced serialization with encryption
       partialize: (state) => ({
-        sessions: state.sessions.map(session => get().encryptSessionData(session)),
+        sessions: state.sessions,
         currentSessionId: state.currentSessionId,
-        encryptionSalt: state.encryptionSalt
       }),
-      // Enhanced deserialization with decryption
-      version: 1,
-      migrate: (persistedState, version) => {
-        if (version === 0) {
-          // Migration logic for older versions
-          return {
-            ...persistedState,
-            encryptionSalt: generateSalt()
-          };
-        }
-        return persistedState;
-      }
     }
   )
 );

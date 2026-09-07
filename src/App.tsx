@@ -17,6 +17,7 @@ import DeveloperGateway from "./pages/DeveloperGateway";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import Sidebar from "./components/Sidebar";
+import AccountRecovery from "./components/AccountRecovery";
 import { useUnifiedKeyStore } from "@/store/useUnifiedKeyStore";
 import { useProviderStore } from "@/store/useProviderStore";
 
@@ -52,6 +53,8 @@ const App = () => {
                 <Route path="/developer" element={<DeveloperGateway />} />
                 <Route path="/local-hub" element={<LocalHub />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/auth/forgot-password" element={<AccountRecovery mode="forgot" />} />
+                <Route path="/auth/reset-password" element={<AccountRecovery mode="reset" />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
