@@ -1,26 +1,26 @@
 "use client";
 
 import React from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
-import { 
-  Cpu, 
-  Monitor, 
-  Trash2, 
+import {
+  Cpu,
+  Monitor,
+  Trash2,
   ShieldAlert
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -37,7 +37,7 @@ export const SettingsModal = ({
   open,
   onClose
 }: SettingsModalProps) => {
-  const { 
+  const {
     autoRoutingPreference, setAutoRoutingPreference,
     compactMode, setCompactMode,
     developerMode, setDeveloperMode
@@ -58,7 +58,7 @@ export const SettingsModal = ({
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-white">Chat Settings</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-6 py-4">
           {/* Routing Preference */}
           <div className="space-y-2">
@@ -67,8 +67,8 @@ export const SettingsModal = ({
               <span>Routing Strategy</span>
             </div>
             <p className="text-xs text-gray-400">Decide how the Auto-Router prioritizes models.</p>
-            <Select 
-              value={autoRoutingPreference} 
+            <Select
+              value={autoRoutingPreference}
               onValueChange={(v: any) => setAutoRoutingPreference(v)}
             >
               <SelectTrigger className="w-full bg-gray-900 border-gray-700 text-white">
@@ -118,9 +118,9 @@ export const SettingsModal = ({
                 <span className="text-xs font-bold text-red-400 block">Clear History</span>
                 <p className="text-[10px] text-gray-500">Delete all chat logs.</p>
               </div>
-              <Button 
-                variant="destructive" 
-                size="sm" 
+              <Button
+                variant="destructive"
+                size="sm"
                 onClick={handleClearCache}
                 className="bg-red-500 hover:bg-red-600 rounded-lg text-xs"
               >
