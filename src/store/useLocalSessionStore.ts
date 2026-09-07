@@ -6,8 +6,33 @@ import {
   getAllSessions,
   deleteSession,
   clearAllSessions,
-  type ChatSession
 } from "@/lib/localStorage";
+
+// Define ChatSession type
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: any[];
+  systemPrompt: string;
+  modelId: string;
+  settings: {
+    temperature: number;
+    maxTokens: number;
+  };
+  updatedAt: number;
+};
+
+// Define ChatMessage type
+type ChatMessage = {
+  role: "user" | "assistant" | "system";
+  content: string;
+  timestamp: number;
+  id: string;
+  isEditing?: boolean;
+  isDeleted?: boolean;
+  isLoading?: boolean;
+  error?: string;
+};
 
 interface SessionState {
   sessions: ChatSession[];

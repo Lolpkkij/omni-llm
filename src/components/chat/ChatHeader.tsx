@@ -9,6 +9,20 @@ import { cn } from '@/lib/utils';
 import { useSessionStore } from '@/store/useSessionStore';
 import ModelSelector from '@/components/ModelSelector';
 
+// Define ChatSession type
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: any[];
+  systemPrompt: string;
+  modelId: string;
+  settings: {
+    temperature: number;
+    maxTokens: number;
+  };
+  updatedAt: number;
+};
+
 interface ChatHeaderProps {
   input: string;
   setInput: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
@@ -102,19 +116,18 @@ export const ChatHeader = ({
           </Button>
           <Button
             variant="ghost"
-            size="icon"
-            onClick={() => {
-              // Placeholder for export functionality
-            }}
-            className="h-9 w-9 text-gray-500 hover:text-white"
-            title="Export as Markdown"
+            size="sm"
+            onClick={() => window.open(`${window.location.origin}/api/v1/models`, '_blank')}
+            className="text-xs font-bold rounded-xl h-9 px-3 gap-2 text-gray-500 hover:text-white"
           >
-            <Download size={18} />
+            <Download size={14} /> Export
           </Button>
           <ModelSelector
             value={currentSession?.modelId || "auto-free"}
             onChange={(val) => {
-              // Placeholder for model change handler
+              if (currentSessionId) {
+                updateSession(currentSessionId, { modelId: val });
+              }
             }}
             providers={providers}
             disabled={!hasAnyProvider}

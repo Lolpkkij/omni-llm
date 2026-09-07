@@ -6,6 +6,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
+// Define ChatSession type
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: any[];
+  systemPrompt: string;
+  modelId: string;
+  settings: {
+    temperature: number;
+    maxTokens: number;
+  };
+  updatedAt: number;
+};
+
 interface SessionListProps {
   sessions: ChatSession[];
   currentSessionId: string | null;
