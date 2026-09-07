@@ -31,7 +31,7 @@ const readSessions = (): ChatSession[] => {
 };
 
 // Helper to write sessions back to localStorage
-const writeSessions = (sessions: ChatSession[]) => {
+const writeSessions = (sessions: ChatSession[]): void => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
 };
 
@@ -45,8 +45,10 @@ export const createSession = (
     id: crypto.randomUUID(),
     updatedAt: Date.now(),
   };
-  sessions.unshift(newSession);
-  writeSessions(sessions);
+
+  // Use unshift only if sessions is an array
+  const updatedSessions = Array.isArray(sessions) ? [newSession, ...sessions] : [newSession];
+  writeSessions(updatedSessions);
   return newSession;
 };
 
@@ -56,15 +58,21 @@ export const updateSession = async (
   updates: Partial<ChatSession>
 ): Promise<ChatSession | null> => {
   const sessions = readSessions();
-  const idx = sessions.findIndex((s) => s.id === id);
+  const idx = Array.isArray(sessions) ? sessions.findIndex((s) => s.id === id) : -1;
   if (idx === -1) return null;
   const updated: ChatSession = {
     ...sessions[idx],
     ...updates,
     updatedAt: Date.now(),
   };
-  sessions[idx] = updated;
-  writeSessions(sessions);
+
+  // Create a new array with the updated session
+  const updatedSessions = Array.isArray(sessions) ? [...sessions] : [];
+  if (Array.isArray(updatedSessions)) {
+    updatedSessions[idx] = updated;
+    writeSessions(updatedSessions);
+  }
+
   return updated;
 };
 
@@ -76,7 +84,8 @@ export const getAllSessions = async (): Promise<ChatSession[]> => {
 // Delete a session by id
 export const deleteSession = async (id: string): Promise<boolean> => {
   const sessions = readSessions();
-  const filtered = sessions.filter((s) => s.id !== id);
+  const filtered = Array.isArray(sessions) ? sessions.filter((s) => s.id !== id) : [];
+
   if (filtered.length === sessions.length) return false;
   writeSessions(filtered);
   return true;
