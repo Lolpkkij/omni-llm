@@ -41,7 +41,7 @@ const AccountRecovery = ({ mode = "forgot" }: AccountRecoveryProps) => {
           </div>
         ) : mode === "forgot" ? (
           <ForgotPasswordForm
-            authClient={authClient}
+            authClient={authClient as any}
             redirectTo={resetUrl}
             onSuccess={() => {
               toast.success("Reset link sent!");
@@ -50,7 +50,7 @@ const AccountRecovery = ({ mode = "forgot" }: AccountRecoveryProps) => {
           />
         ) : (
           <ResetPasswordForm
-            authClient={authClient}
+            authClient={authClient as any}
             onSuccess={() => {
               toast.success("Password updated successfully.");
               navigate("/");
