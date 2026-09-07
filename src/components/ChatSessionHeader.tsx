@@ -7,6 +7,20 @@ import { Input } from '@/components/ui/input';
 import { useSessionStore } from '@/store/useSessionStore';
 import ModelSelector from '@/components/ModelSelector';
 
+// Define ChatSession type
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: any[];
+  systemPrompt: string;
+  modelId: string;
+  settings: {
+    temperature: number;
+    maxTokens: number;
+  };
+  updatedAt: number;
+};
+
 interface ChatSessionHeaderProps {
   showHistory: boolean;
   setShowHistory: (val: boolean) => void;
@@ -14,6 +28,8 @@ interface ChatSessionHeaderProps {
   setShowSystemPrompt: (val: boolean) => void;
   showSettings: boolean;
   setShowSettings: (val: boolean) => void;
+  currentSession: ChatSession | null;
+  providers: any[];
 }
 
 const ChatSessionHeader = ({
@@ -22,10 +38,11 @@ const ChatSessionHeader = ({
   showSystemPrompt,
   setShowSystemPrompt,
   showSettings,
-  setShowSettings
+  setShowSettings,
+  currentSession,
+  providers
 }: ChatSessionHeaderProps) => {
-  const { currentSessionId, sessions, updateSession } = useSessionStore();
-  const currentSession = sessions.find(s => s.id === currentSessionId);
+  const { currentSessionId, updateSession } = useSessionStore();
 
   return (
     <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900/40 backdrop-blur-md">
@@ -62,6 +79,7 @@ const ChatSessionHeader = ({
               updateSession(currentSessionId, { modelId: val });
             }
           }}
+          providers={providers}
         />
         <Button
           variant="ghost"
