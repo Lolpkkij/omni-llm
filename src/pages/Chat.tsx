@@ -20,6 +20,20 @@ import { toast } from 'sonner';
 import { ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Define ChatSession type
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: any[];
+  systemPrompt: string;
+  modelId: string;
+  settings: {
+    temperature: number;
+    maxTokens: number;
+  };
+  updatedAt: number;
+};
+
 export default function Chat() {
   const {
     sessions,
@@ -65,7 +79,10 @@ export default function Chat() {
     init();
   }, []);
 
-  const currentSession = sessions.find(s => s.id === currentSessionId) || null;
+  // Ensure sessions is properly typed and initialized
+  const currentSession = Array.isArray(sessions) && sessions.length > 0
+    ? sessions.find((s: ChatSession) => s.id === currentSessionId) || null
+    : null;
 
   // Track scroll position to show/hide "scroll to bottom" button
   useEffect(() => {
