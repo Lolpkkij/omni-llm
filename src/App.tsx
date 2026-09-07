@@ -16,7 +16,7 @@ import PromptLibrary from "./pages/PromptLibrary";
 import DeveloperGateway from "./pages/DeveloperGateway";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
-import Sidebar from "./components/Sidebar";
+import Navbar from "./components/Navbar";
 import AccountRecovery from "./components/AccountRecovery";
 import { useUnifiedKeyStore } from "@/store/useUnifiedKeyStore";
 import { useProviderStore } from "@/store/useProviderStore";
@@ -38,9 +38,9 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <div className="flex min-h-screen bg-[#0a0b2e] text-gray-100">
-            <Sidebar />
-            <div className="flex-1 flex flex-col h-screen overflow-hidden">
+          <div className="flex flex-col min-h-screen bg-[#0a0b2e] text-gray-100">
+            <Navbar />
+            <div className="flex-1">
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/chat" element={<Chat />} />

@@ -11,7 +11,7 @@ import { routeModel, AUTO_FREE, AUTO_PREMIUM, AUTO_CHEAPEST, MODEL_CATALOG } fro
 import { SessionList } from '@/components/chat/SessionList';
 import { MessageList } from '@/components/chat/MessageList';
 import { MessageInput } from '@/components/chat/MessageInput';
-import { ChatHeader } from '@/components/chat/ChatHeader';
+import { ChatSessionHeader } from '@/components/ChatSessionHeader';
 import { SettingsModal } from '@/components/chat/SettingsModal';
 import { SystemPromptEditor } from '@/components/chat/SystemPromptEditor';
 import SubscriptionModal from '@/components/SubscriptionModal';
@@ -266,34 +266,29 @@ export default function Chat() {
 
       {/* Chat Window Column */}
       <div className="flex-1 flex flex-col h-full bg-[#0a0b2e] relative overflow-hidden">
-        <ChatHeader
-          input={input}
-          setInput={(e) => setInput(e.target.value)}
-          handleSend={handleSend}
-          hasAnyProvider={hasAnyProvider}
-          currentSession={currentSession}
+        <ChatSessionHeader
+          showHistory={showHistory}
+          setShowHistory={setShowHistory}
           showSystemPrompt={showSystemPrompt}
           setShowSystemPrompt={setShowSystemPrompt}
           showSettings={showSettings}
           setShowSettings={setShowSettings}
-          showHistory={showHistory}
-          setShowHistory={setShowHistory}
-          showSubscriptionModal={showSubscriptionModal}
-          setShowSubscriptionModal={setShowSubscriptionModal}
-          editingId={editingSessionId}
-          editTitle={editTitle}
-          setEditingId={setEditingSessionId}
-          setEditTitle={setEditTitle}
-          renameSession={renameSession}
-          currentSessionId={currentSessionId}
-          templates={MODEL_CATALOG}
-          sessions={sessions}
-          removeSession={removeSession}
-          setCurrentSession={setCurrentSession}
-          createSession={createSession}
-          providers={providers}
-          checkAccess={checkAccess}
         />
+
+        {showSystemPrompt && (
+          <SystemPromptEditor
+            open={showSystemPrompt}
+            onClose={() => setShowSystemPrompt(false)}
+            systemPrompt={currentSession?.systemPrompt || ''}
+            setSystemPrompt={(val) => {
+              if (currentSessionId) {
+                updateSession(currentSessionId, { systemPrompt: val });
+              }
+            }}
+            currentSessionId={currentSessionId}
+            updateSession={updateSession}
+          />
+        )}
 
         <MessageList
           messages={currentSession?.messages || []}
