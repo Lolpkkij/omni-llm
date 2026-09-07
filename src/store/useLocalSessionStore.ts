@@ -5,6 +5,7 @@ import {
   updateSession,
   getAllSessions,
   deleteSession,
+  clearAllSessions,
   type ChatSession
 } from "@/lib/localStorage";
 
@@ -205,12 +206,7 @@ export const useLocalSessionStore = create<SessionState>()(
       clearAllSessions: async () => {
         set({ loading: true, error: null });
         try {
-          // Clear all sessions from IndexedDB
-          const sessions = await getAllSessions();
-          for (const session of sessions) {
-            await deleteSession(session.id);
-          }
-
+          await clearAllSessions();
           set({ sessions: [], currentSessionId: null, loading: false });
         } catch (error) {
           set({ error: "Failed to clear sessions", loading: false });

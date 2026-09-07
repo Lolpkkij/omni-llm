@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useSessionStore } from '@/store/useSessionStore';
+import { useLocalSessionStore } from '@/store/useLocalSessionStore';
 import { useProviderStore } from '@/store/useProviderStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -32,7 +32,8 @@ export default function ChatInterface() {
     editMessageInSession,
     deleteMessageInSession,
     renameSession,
-  } = useSessionStore();
+    loadSessions,
+  } = useLocalSessionStore();
 
   const { providers, load: loadProviders } = useProviderStore();
   const { checkAccess } = useSubscriptionStore();
@@ -56,6 +57,7 @@ export default function ChatInterface() {
   useEffect(() => {
     const init = async () => {
       await loadProviders();
+      await loadSessions();
       if (sessions.length === 0) {
         await createSession(AUTO_FREE);
       }

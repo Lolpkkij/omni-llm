@@ -51,7 +51,7 @@ export const createSession = (
 };
 
 // Update an existing session (partial updates allowed)
-const updateSession = async (
+export const updateSession = async (
   id: string,
   updates: Partial<ChatSession>
 ): Promise<ChatSession | null> => {
@@ -69,12 +69,12 @@ const updateSession = async (
 };
 
 // Retrieve all sessions
-const getAllSessions = async (): Promise<ChatSession[]> => {
+export const getAllSessions = async (): Promise<ChatSession[]> => {
   return readSessions();
 };
 
 // Delete a session by id
-const deleteSession = async (id: string): Promise<boolean> => {
+export const deleteSession = async (id: string): Promise<boolean> => {
   const sessions = readSessions();
   const filtered = sessions.filter((s) => s.id !== id);
   if (filtered.length === sessions.length) return false;
@@ -82,4 +82,7 @@ const deleteSession = async (id: string): Promise<boolean> => {
   return true;
 };
 
-export { updateSession, getAllSessions, deleteSession };
+// Clear all sessions
+export const clearAllSessions = async (): Promise<void> => {
+  localStorage.removeItem(STORAGE_KEY);
+};
