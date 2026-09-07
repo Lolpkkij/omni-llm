@@ -39,20 +39,9 @@ const AccountRecovery = ({ mode = "forgot" }: AccountRecoveryProps) => {
             </p>
           </div>
         ) : mode === "forgot" ? (
-          <ForgotPasswordForm
-            redirectTo={resetUrl}
-            onSuccess={() => {
-              toast.success("Reset link sent!");
-              setSent(true);
-            }}
-          />
+          <ForgotPasswordForm localization={{}} />
         ) : (
-          <ResetPasswordForm
-            onSuccess={() => {
-              toast.success("Password updated successfully.");
-              navigate("/");
-            }}
-          />
+          <ResetPasswordForm localization={{}} />
         )}
 
         <p className="mt-6 text-center text-xs text-gray-500">
