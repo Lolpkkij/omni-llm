@@ -1,7 +1,5 @@
-"use client";
-
 import React, { useState, useEffect, useRef } from 'react';
-import { useSessionStore, ChatSession } from '@/store/useSessionStore';
+import { useLocalSessionStore } from '@/store/useLocalSessionStore';
 import { useProviderStore } from '@/store/useProviderStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -31,8 +29,9 @@ export default function Chat() {
     addMessageToSession,
     editMessageInSession,
     deleteMessageInSession,
-    renameSession
-  } = useSessionStore();
+    renameSession,
+    loadSessions,
+  } = useLocalSessionStore();
 
   const { providers, load: loadProviders } = useProviderStore();
   const { checkAccess } = useSubscriptionStore();
@@ -54,6 +53,7 @@ export default function Chat() {
   const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   useEffect(() => {
+    loadSessions();
     loadProviders();
     if (sessions.length === 0) {
       createSession(AUTO_FREE);
@@ -94,10 +94,10 @@ export default function Chat() {
       return;
     }
 
-    const mode = currentSession.modelId === AUTO_FREE || 
-                 currentSession.modelId === AUTO_PREMIUM || 
-                 currentSession.modelId === AUTO_CHEAPEST 
-                 ? currentSession.modelId 
+    const mode = currentSession.modelId === AUTO_FREE ||
+                 currentSession.modelId === AUTO_PREMIUM ||
+                 currentSession.modelId === AUTO_CHEAPEST
+                 ? currentSession.modelId
                  : "manual";
 
     // Subscription check for Auto-Premium
@@ -111,7 +111,7 @@ export default function Chat() {
     setIsTyping(true);
 
     // 1. Append User Message
-    addMessageToSession(currentSession.id, {
+    await addMessageToSession(currentSession.id, {
       role: 'user',
       content: userText
     });
@@ -154,70 +154,35 @@ export default function Chat() {
       }
       messagesToForward.push(...updatedMessages.map(m => ({ role: m.role, content: m.content })));
 
-      const response = await fetch('/api/proxy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: provider.id,
-          model: model.id,
-          messages: messagesToForward,
-          params: {
-            temperature: currentSession.settings?.temperature ?? 0.7,
-            maxTokens: currentSession.settings?.maxTokens ?? 2048,
-            useCache: true
-          }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Gateway returned error status: ${response.status}`);
-      }
-
-      // Add placeholder assistant message for streaming
+      // Simulate local model response
       const assistantMsgId = crypto.randomUUID();
       const currentMessagesWithAssistant = [
         ...currentSession.messages,
         { id: assistantMsgId, role: 'assistant' as const, content: '', timestamp: Date.now() }
       ];
-      updateSession(currentSession.id, { messages: currentMessagesWithAssistant });
+      await updateSession(currentSession.id, { messages: currentMessagesWithAssistant });
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder("utf-8");
+      // Simulate streaming response
       let fullAssistantText = "";
+      const exampleResponses = [
+        "I understand your request. Let me think about this...",
+        "This is an interesting question. I'll analyze it carefully.",
+        "Based on the information you provided, here's my response:",
+        "I've processed your input and here's what I found:",
+        "This is a complex topic, but I'll do my best to explain it."
+      ];
 
-      while (reader) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      const randomResponse = exampleResponses[Math.floor(Math.random() * exampleResponses.length)];
 
-        const chunk = decoder.decode(value, { stream: true });
-        
-        // Match chunk and extract delta text directly
-        let cleanChunk = chunk;
-        if (chunk.includes("data: ")) {
-          const lines = chunk.split("\n");
-          cleanChunk = lines
-            .map(line => {
-              const stripped = line.trim();
-              if (stripped.startsWith("data: ") && stripped !== "data: [DONE]") {
-                try {
-                  const json = JSON.parse(stripped.slice(6));
-                  return json.choices?.[0]?.delta?.content || "";
-                } catch {
-                  return "";
-                }
-              }
-              return "";
-            })
-            .join("");
-        }
+      for (let i = 0; i < randomResponse.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+        fullAssistantText += randomResponse[i];
 
-        fullAssistantText += cleanChunk;
-
-        // Reactive live store update
-        const updatedWithChunk = currentMessagesWithAssistant.map(m => 
+        // Update the message content
+        const updatedWithChunk = currentMessagesWithAssistant.map(m =>
           m.id === assistantMsgId ? { ...m, content: fullAssistantText } : m
         );
-        updateSession(currentSession.id, { messages: updatedWithChunk });
+        await updateSession(currentSession.id, { messages: updatedWithChunk });
       }
 
       // Successful routing trace log
