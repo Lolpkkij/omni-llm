@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ForgotPasswordForm, ResetPasswordForm } from "@neondatabase/auth/react";
-import { authClient } from "@/lib/auth-client";
 import { KeyRound, MailCheck } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,7 +40,6 @@ const AccountRecovery = ({ mode = "forgot" }: AccountRecoveryProps) => {
           </div>
         ) : mode === "forgot" ? (
           <ForgotPasswordForm
-            authClient={authClient}
             redirectTo={resetUrl}
             onSuccess={() => {
               toast.success("Reset link sent!");
@@ -50,7 +48,6 @@ const AccountRecovery = ({ mode = "forgot" }: AccountRecoveryProps) => {
           />
         ) : (
           <ResetPasswordForm
-            authClient={authClient}
             onSuccess={() => {
               toast.success("Password updated successfully.");
               navigate("/");
