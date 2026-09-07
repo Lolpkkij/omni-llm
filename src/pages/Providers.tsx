@@ -118,7 +118,7 @@ const Providers = () => {
                             <p className="text-sm text-gray-500 font-mono mt-1">{p.baseUrl}</p>
                         </div>
                         </div>
-                        
+
                         <Button
                           variant="outline"
                           size="sm"

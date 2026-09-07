@@ -9,12 +9,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -65,14 +65,13 @@ export default function ProviderModal({ open, onClose }: ProviderModalProps) {
       await addProvider({
         name,
         baseUrl,
-        // These are for the proxy server logic, though not strictly in the Provider type 
-        // we might need to update the type if we want to persist these. 
+        // These are for the proxy server logic, though not strictly in the Provider type
+        // we might need to update the type if we want to persist these.
         // For now, we align with the current useProviderStore.addProvider.
         auth: { type: authType, keyName, prefix: prefix || undefined },
         enabled,
         order,
-        // Note: If the Provider type in lib/providerConfig doesn't have these, 
-        // they will be stripped or cause TS errors. 
+        // Note: If the Provider type in lib/providerConfig doesn't have these, they will be stripped or cause TS errors.
         // Based on current Provider type: id, name, baseUrl, auth, encryptedKeys, providerType, detectedModel, enabled, order.
       } as any);
 
@@ -100,7 +99,7 @@ export default function ProviderModal({ open, onClose }: ProviderModalProps) {
               placeholder="e.g. My Local LLM" 
               value={name} 
               onChange={e => setName(e.target.value)}
-              className="bg-gray-900 border-gray-700" 
+              className="bg-gray-900 border-gray-700 text-white" 
             />
           </div>
           <div className="space-y-2">
@@ -109,7 +108,7 @@ export default function ProviderModal({ open, onClose }: ProviderModalProps) {
               placeholder="https://api.openai.com/v1" 
               value={baseUrl} 
               onChange={e => setBaseUrl(e.target.value)}
-              className="bg-gray-900 border-gray-700" 
+              className="bg-gray-900 border-gray-700 text-white" 
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -132,7 +131,7 @@ export default function ProviderModal({ open, onClose }: ProviderModalProps) {
                 placeholder="Authorization" 
                 value={keyName} 
                 onChange={e => setKeyName(e.target.value)}
-                className="bg-gray-900 border-gray-700" 
+                className="bg-gray-900 border-gray-700 text-white" 
               />
             </div>
           </div>
@@ -142,7 +141,7 @@ export default function ProviderModal({ open, onClose }: ProviderModalProps) {
               placeholder="Bearer " 
               value={prefix} 
               onChange={e => setPrefix(e.target.value)}
-              className="bg-gray-900 border-gray-700" 
+              className="bg-gray-900 border-gray-700 text-white" 
             />
           </div>
           <div className="space-y-2">
@@ -151,7 +150,7 @@ export default function ProviderModal({ open, onClose }: ProviderModalProps) {
               placeholder="/chat/completions" 
               value={modelPath} 
               onChange={e => setModelPath(e.target.value)}
-              className="bg-gray-900 border-gray-700" 
+              className="bg-gray-900 border-gray-700 text-white" 
             />
           </div>
           <div className="space-y-2">
@@ -178,13 +177,13 @@ export default function ProviderModal({ open, onClose }: ProviderModalProps) {
               type="number" 
               value={order} 
               onChange={e => setOrder(Number(e.target.value))}
-              className="bg-gray-900 border-gray-700" 
+              className="bg-gray-900 border-gray-700 text-white" 
             />
           </div>
           <Button 
             onClick={handleCreate} 
-            disabled={loading}
-            className="w-full bg-[#6366F1] hover:bg-[#4f46e5] py-6 font-bold rounded-xl mt-4"
+            disabled={loading} 
+            className="w-full bg-[#6366F1] hover:bg-[#4f46e5] text-white rounded-xl mt-4" 
           >
             {loading ? "Creating..." : "Create Provider"}
           </Button>
