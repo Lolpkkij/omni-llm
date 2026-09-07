@@ -1,53 +1,11 @@
 "use client";
 
 import React from 'react';
-import { 
-  Send, 
-  Bot, 
-  Plus, 
-  History, 
-  Trash2, 
-  Sparkles, 
-  Zap, 
-  Settings2, 
-  X, 
-  Sliders, 
-  Database, 
-  MessageSquare, 
-  Edit2, 
-  Check, 
-  FileText, 
-  Search, 
-  ArrowDown, 
-  Download, 
-  Terminal, 
-  User, 
-  Loader2, 
-  AlertTriangle, 
-  Pencil, 
-  Trash, 
-  Edit3, 
-  AlertCircle
-} from 'lucide-react';
-import { useSessionStore, ChatSession } from '@/store/useSessionStore';
-import { useLogStore } from '@/store/useLogStore';
-import { usePromptStore } from '@/store/usePromptStore';
-import { useSettingsStore } from '@/store/useSettingsStore';
-import MessageBubble from '@/components/MessageBubble';
+import { Send, Bot, Plus, History, Trash2, Sparkles, Zap, Settings2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { useProviderStore } from '@/store/useProviderStore';
-import { useSubscriptionStore } from '@/store/useSubscriptionStore';
-import ModelSelector from '@/components/ModelSelector';
-import SubscriptionModal from '@/components/SubscriptionModal';
-import { routeModel, AUTO_FREE, AUTO_PREMIUM } from '@/lib/modelRouter';
-import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
 
 interface ChatHeaderProps {
   input: string;
@@ -136,7 +94,7 @@ export const ChatHeader = ({
           </Button>
           <Button variant="ghost" size="icon" onClick={() => {
             /* exportMarkdown logic would be here, but we removed it for brevity in this example */
-            /* In reality, we would pass a handler for export */ 
+            /* In reality, we would pass a handler for export */
           }} className="h-9 w-9 text-gray-500 hover:text-white" title="Export as Markdown"><Download size={18} /></Button>
           <ModelSelector value={currentSession?.modelId || AUTO_FREE} onChange={(val) => {
             /* handleModelChange would be here */
@@ -166,10 +124,6 @@ export const ChatHeader = ({
           </div>
         </div>
       )}
-
-      {/* Edit Message Dialog */}
-      {/* We are leaving these in ChatHeader for now, but they could be moved to Chat component */}
-      {/* ... */}
     </>
   );
 };

@@ -5,31 +5,8 @@ import {
   updateSession,
   getAllSessions,
   deleteSession,
+  type ChatSession
 } from "@/lib/localStorage";
-
-type ChatMessage = {
-  role: "user" | "assistant" | "system";
-  content: string;
-  timestamp: number;
-  id: string;
-  isEditing?: boolean;
-  isDeleted?: boolean;
-  isLoading?: boolean;
-  error?: string;
-};
-
-type ChatSession = {
-  id: string;
-  title: string;
-  messages: ChatMessage[];
-  systemPrompt: string;
-  modelId: string;
-  settings: {
-    temperature: number;
-    maxTokens: number;
-  };
-  updatedAt: number;
-};
 
 interface SessionState {
   sessions: ChatSession[];
