@@ -11,7 +11,7 @@ import { routeModel, AUTO_FREE, AUTO_PREMIUM, AUTO_CHEAPEST, MODEL_CATALOG } fro
 import { SessionList } from '@/components/chat/SessionList';
 import { MessageList } from '@/components/chat/MessageList';
 import { MessageInput } from '@/components/chat/MessageInput';
-import ChatSessionHeader from '@/components/ChatSessionHeader'; // <-- Corrected import
+import ChatSessionHeader from '@/components/ChatSessionHeader';
 import { SettingsModal } from '@/components/chat/SettingsModal';
 import { SystemPromptEditor } from '@/components/chat/SystemPromptEditor';
 import SubscriptionModal from '@/components/SubscriptionModal';
@@ -275,6 +275,8 @@ export default function Chat() {
           setShowSystemPrompt={setShowSystemPrompt}
           showSettings={showSettings}
           setShowSettings={setShowSettings}
+          currentSession={currentSession}
+          providers={providers}
         />
 
         {showSystemPrompt && (
