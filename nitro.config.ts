@@ -1,5 +1,9 @@
-import { defineConfig } from "nitro";
+import { defineNitroConfig } from "nitro/config";
 
-export default defineConfig({
-  serverDir: "./server",
+export default defineNitroConfig({
+  srcDir: "./server",
+  devServer: {
+    watch: ["./server"],
+  },
+  // Add any other Nitro-specific configurations here
 });
