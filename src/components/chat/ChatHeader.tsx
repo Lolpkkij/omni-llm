@@ -67,13 +67,13 @@ interface ChatHeaderProps {
   editTitle: string;
   setEditingId: (id: string | null) => void;
   setEditTitle: (title: string) => void;
-  renameSession: (id: string, title: string) => void;
+  renameSession: (id: string, title: string) => Promise<void>;
   currentSessionId: string | null;
   templates: any[];
   sessions: any[];
   removeSession: (id: string) => void;
   setCurrentSession: (id: string) => void;
-  createSession: (modelId: string, systemPrompt?: string) => string;
+  createSession: (modelId: string, systemPrompt?: string) => Promise<string>;
   providers: any[];
   checkAccess: (feature: string) => boolean;
 }

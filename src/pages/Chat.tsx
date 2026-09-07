@@ -53,11 +53,14 @@ export default function Chat() {
   const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   useEffect(() => {
-    loadSessions();
-    loadProviders();
-    if (sessions.length === 0) {
-      createSession(AUTO_FREE);
-    }
+    const init = async () => {
+      await loadSessions();
+      await loadProviders();
+      if (sessions.length === 0) {
+        await createSession(AUTO_FREE);
+      }
+    };
+    init();
   }, []);
 
   const currentSession = sessions.find(s => s.id === currentSessionId) || null;

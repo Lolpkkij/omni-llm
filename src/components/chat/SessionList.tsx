@@ -20,13 +20,13 @@ interface SessionListProps {
   sessionSearch: string;
   setSessionSearch: (e: React.ChangeEvent<HTMLInputElement>) => void;
   setCurrentSession: (id: string) => void;
-  createSession: (modelId: string, systemPrompt?: string) => string;
+  createSession: (modelId: string, systemPrompt?: string) => Promise<string>;
   removeSession: (id: string) => void;
   editingId: string | null;
   editTitle: string;
   setEditingId: (id: string | null) => void;
   setEditTitle: (title: string) => void;
-  renameSession: (id: string, title: string) => void;
+  renameSession: (id: string, title: string) => Promise<void>;
 }
 
 export const SessionList = ({
@@ -50,11 +50,13 @@ export const SessionList = ({
   return (
     <div className="flex flex-col h-full">
       <Button
-        onClick={() => createSession("auto-free")}
-        className="w-full bg-[#6366F1] hover:bg-[#4f46e5] text-white rounded-xl mb-4 flex items-center justify-center gap-2 shadow-lg shadow-[#6366F1]/20"
-      >
-        <Plus size={18} /> New Conversation
-      </Button>
+              onClick={async () => {
+                await createSession("auto-free");
+              }}
+              className="w-full bg-[#6366F1] hover:bg-[#4f46e5] text-white rounded-xl mb-4 flex items-center justify-center gap-2 shadow-lg shadow-[#6366F1]/20"
+            >
+              <Plus size={18} /> New Conversation
+            </Button>
 
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
