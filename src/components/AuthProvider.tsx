@@ -2,7 +2,6 @@ import React from "react";
 import { NeonAuthUIProvider } from "@neondatabase/auth/react";
 import { useNavigate, Link } from "react-router-dom";
 import { authClient } from "@/lib/auth-client";
-import { toast } from "sonner";
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
@@ -14,10 +13,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       navigate={(href) => navigate(href)}
       replace={(href) => navigate(href, { replace: true })}
       Link={({ href, ...props }) => <Link to={href} {...props} />}
-      onPasswordResetSuccess={() => {
-        toast.success("Password updated successfully.");
-        navigate("/");
-      }}
     >
       {children}
     </NeonAuthUIProvider>
