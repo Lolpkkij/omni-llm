@@ -49,9 +49,12 @@ export const SessionList = ({
   setEditTitle,
   renameSession
 }: SessionListProps) => {
-  const filteredSessions = sessions.filter(s =>
-    s.title.toLowerCase().includes(sessionSearch.toLowerCase())
-  );
+  // Ensure sessions is properly typed and initialized
+  const filteredSessions = Array.isArray(sessions) && sessions.length > 0
+    ? sessions.filter((s: ChatSession) =>
+        s.title.toLowerCase().includes(sessionSearch.toLowerCase())
+      )
+    : [];
 
   return (
     <div className="flex flex-col h-full">
