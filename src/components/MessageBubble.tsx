@@ -151,7 +151,8 @@ export default function MessageBubble({
                     </button>
                   </div>
                 )}
-              </>
+              </div>
+            </>
           )}
         </div>
       )}
