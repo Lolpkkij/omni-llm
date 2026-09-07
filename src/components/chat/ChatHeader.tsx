@@ -1,11 +1,13 @@
 "use client";
 
 import React from 'react';
-import { Send, Bot, Plus, History, Trash2, Sparkles, Zap, Settings2, X } from 'lucide-react';
+import { Send, Bot, Plus, History, Trash2, Sparkles, Zap, Settings2, X, Terminal, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useSessionStore } from '@/store/useSessionStore';
+import ModelSelector from '@/components/ModelSelector';
 
 interface ChatHeaderProps {
   input: string;
@@ -70,11 +72,17 @@ export const ChatHeader = ({
     <>
       <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900/40 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => setShowHistory(!showHistory)} className="lg:hidden text-gray-500"><History size={20} /></Button>
+          <Button variant="ghost" size="icon" onClick={() => setShowHistory(!showHistory)} className="lg:hidden text-gray-500">
+            <History size={20} />
+          </Button>
           <div className="hidden sm:flex items-center gap-3">
-            <div className="p-2 bg-[#6366F1]/10 text-[#6366F1] rounded-xl"><Bot size={18} /></div>
+            <div className="p-2 bg-[#6366F1]/10 text-[#6366F1] rounded-xl">
+              <Bot size={18} />
+            </div>
             <div>
-              <span className="font-bold text-sm text-white block truncate max-w-[200px]">{currentSession?.title || "Chat Studio"}</span>
+              <span className="font-bold text-sm text-white block truncate max-w-[200px]">
+                {currentSession?.title || "Chat Studio"}
+              </span>
               <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Encrypted Session</span>
             </div>
           </div>
@@ -92,14 +100,33 @@ export const ChatHeader = ({
           >
             <Terminal size={14} /> Persona
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => {
-            /* exportMarkdown logic would be here, but we removed it for brevity in this example */
-            /* In reality, we would pass a handler for export */
-          }} className="h-9 w-9 text-gray-500 hover:text-white" title="Export as Markdown"><Download size={18} /></Button>
-          <ModelSelector value={currentSession?.modelId || AUTO_FREE} onChange={(val) => {
-            /* handleModelChange would be here */
-          }} providers={providers} disabled={!hasAnyProvider} />
-          <Button variant="ghost" size="icon" onClick={() => setShowSettings(!showSettings)} className={cn("h-9 w-9", showSettings ? "text-[#6366F1] bg-[#6366F1]/10" : "text-gray-500 hover:text-white")}><Settings2 size={18} /></Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              // Placeholder for export functionality
+            }}
+            className="h-9 w-9 text-gray-500 hover:text-white"
+            title="Export as Markdown"
+          >
+            <Download size={18} />
+          </Button>
+          <ModelSelector
+            value={currentSession?.modelId || "auto-free"}
+            onChange={(val) => {
+              // Placeholder for model change handler
+            }}
+            providers={providers}
+            disabled={!hasAnyProvider}
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowSettings(!showSettings)}
+            className={cn("h-9 w-9", showSettings ? "text-[#6366F1] bg-[#6366F1]/10" : "text-gray-500 hover:text-white")}
+          >
+            <Settings2 size={18} />
+          </Button>
         </div>
       </div>
 
@@ -107,8 +134,10 @@ export const ChatHeader = ({
         <div className="p-4 border-b border-gray-800 bg-emerald-500/5 animate-in slide-in-from-top-2">
           <div className="max-w-4xl mx-auto space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-bold text-emerald-500 uppercase tracking-widest">System Instructions</Label>
-              <button onClick={() => setShowSystemPrompt(false)} className="text-gray-500 hover:text-white"><X size={14} /></button>
+              <span className="text-xs font-bold text-emerald-500 uppercase tracking-widest">System Instructions</span>
+              <button onClick={() => setShowSystemPrompt(false)} className="text-gray-500 hover:text-white">
+                <X size={14} />
+              </button>
             </div>
             <textarea
               className="w-full bg-gray-900 border border-emerald-500/20 rounded-xl p-3 text-xs text-gray-300 outline-none focus:ring-1 ring-emerald-500/50 resize-none"

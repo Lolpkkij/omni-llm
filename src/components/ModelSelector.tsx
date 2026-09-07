@@ -1,15 +1,15 @@
 "use client";
 
 import React from "react";
-import { 
-  Select, 
-  SelectTrigger, 
-  SelectValue, 
-  SelectContent, 
-  SelectItem, 
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
   SelectGroup,
   SelectLabel,
-  SelectSeparator 
+  SelectSeparator
 } from "@/components/ui/select";
 import { Sparkles, Lock, Zap, CheckCircle2, DollarSign } from "lucide-react";
 import { useSubscriptionStore } from "@/store/useSubscriptionStore";
@@ -29,7 +29,7 @@ export default function ModelSelector({ value, onChange, providers, disabled }: 
   const hasAnyProvider = providers.some(p => p.enabled && p.encryptedKeys?.length);
 
   // Get available manual models from configured providers
-  const availableModels = MODEL_CATALOG.filter(m => 
+  const availableModels = MODEL_CATALOG.filter(m =>
     providers.some(p => p.enabled && p.encryptedKeys?.length && p.providerType === m.providerType)
   );
 
@@ -56,8 +56,8 @@ export default function ModelSelector({ value, onChange, providers, disabled }: 
             </div>
             <span className="text-xs text-emerald-400 font-medium">SMART</span>
           </SelectItem>
-          <SelectItem 
-            value={AUTO_PREMIUM} 
+          <SelectItem
+            value={AUTO_PREMIUM}
             disabled={!hasPremiumAccess}
             className={cn("relative flex items-center justify-between", !hasPremiumAccess && "opacity-50 cursor-not-allowed")}
           >
@@ -82,8 +82,8 @@ export default function ModelSelector({ value, onChange, providers, disabled }: 
                     {providerType.charAt(0).toUpperCase() + providerType.slice(1)}
                   </SelectLabel>
                   {providerModels.map(model => (
-                    <SelectItem 
-                      key={model.id} 
+                    <SelectItem
+                      key={model.id}
                       value={model.id}
                       className="relative flex items-center justify-between"
                     >

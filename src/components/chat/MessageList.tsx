@@ -10,7 +10,7 @@ interface MessageListProps {
   isTyping: boolean;
   showScrollBtn: boolean;
   scrollRef: React.RefObject<HTMLDivElement | null>;
-  handleEditClick: (message: {id: string, content: string}) => void;
+  handleEditClick: (message: { id: string; content: string }) => void;
   handleDeleteClick: (messageId: string) => void;
 }
 
