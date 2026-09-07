@@ -14,9 +14,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       navigate={(href) => navigate(href)}
       replace={(href) => navigate(href, { replace: true })}
       Link={({ href, ...props }) => <Link to={href} {...props} />}
-      onForgotPasswordSubmit={() => {
-        toast.success("Reset link sent!");
-      }}
       onPasswordResetSuccess={() => {
         toast.success("Password updated successfully.");
         navigate("/");
