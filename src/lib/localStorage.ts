@@ -60,20 +60,16 @@ export const updateSession = async (
   const sessions = readSessions();
   const idx = Array.isArray(sessions) ? sessions.findIndex((s) => s.id === id) : -1;
   if (idx === -1) return null;
-  const updated: ChatSession = {
-    ...sessions[idx],
-    ...updates,
-    updatedAt: Date.now(),
-  };
-
-  // Create a new array with the updated session
-  const updatedSessions = Array.isArray(sessions) ? [...sessions] : [];
-  if (Array.isArray(updatedSessions)) {
-    updatedSessions[idx] = updated;
+    // Create a new array with the updated session
+    const updatedSessions = [...sessions];
+    updatedSessions[idx] = {
+      ...sessions[idx],
+      ...updates,
+      updatedAt: Date.now(),
+    };
+  
     writeSessions(updatedSessions);
-  }
-
-  return updated;
+    return sessions[idx] as ChatSession;
 };
 
 // Retrieve all sessions

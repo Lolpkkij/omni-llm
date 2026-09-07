@@ -55,7 +55,7 @@ interface SessionState {
 export const useLocalSessionStore = create<SessionState>()(
   persist(
     (set, get) => ({
-      sessions: [],
+      sessions: [], // Ensure sessions is always an array
       currentSessionId: null,
       loading: false,
       error: null,
